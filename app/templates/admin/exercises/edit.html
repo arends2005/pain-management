@@ -130,6 +130,14 @@
                         {{ form.is_active.label(class="form-check-label") }}
                     </div>
                     
+                    <div class="mb-3 form-check">
+                        {{ form.discord_notifications(class="form-check-input") }}
+                        {{ form.discord_notifications.label(class="form-check-label") }}
+                        <small class="form-text text-muted d-block">
+                            Enable Discord notifications for this exercise. The user will receive reminders via Discord if they have Discord preferences set up.
+                        </small>
+                    </div>
+                    
                     <div class="d-grid gap-2">
                         {{ form.submit(class="btn btn-primary") }}
                     </div>

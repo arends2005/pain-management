@@ -68,6 +68,9 @@
                     <a href="{{ url_for('admin.user_text_preferences', user_id=user.id) }}" class="btn btn-info">
                         <i class="fas fa-sms me-1"></i>Text Preferences
                     </a>
+                    <a href="{{ url_for('admin.user_discord_preferences', user_id=user.id) }}" class="btn btn-discord">
+                        <i class="fab fa-discord me-1"></i>Discord Preferences
+                    </a>
                 </div>
             </div>
         </div>
@@ -180,4 +183,20 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .btn-discord {
+        background-color: #5865F2;
+        border-color: #5865F2;
+        color: white;
+    }
+    
+    .btn-discord:hover {
+        background-color: #4752C4;
+        border-color: #4752C4;
+        color: white;
+    }
+</style>
 {% endblock %} 

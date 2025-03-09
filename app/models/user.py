@@ -20,6 +20,7 @@ class User(db.Model, UserMixin):
     injuries = db.relationship('Injury', backref='user', lazy=True, cascade='all, delete-orphan')
     recovery_plans = db.relationship('RecoveryPlan', backref='user', lazy=True, cascade='all, delete-orphan')
     text_preferences = db.relationship('TextPreference', backref='user', uselist=False, cascade='all, delete-orphan')
+    discord_preferences = db.relationship('DiscordPreference', backref='user', uselist=False, cascade='all, delete-orphan')
     
     @property
     def password(self):
@@ -57,4 +58,65 @@ class TextPreference(db.Model):
     receive_progress_updates = db.Column(db.Boolean, default=True)
     
     def __repr__(self):
-        return f'<TextPreference for User {self.user_id}>' 
+        return f'<TextPreference for User {self.user_id}>'
+
+class DiscordPreference(db.Model):
+    __tablename__ = 'discord_preferences'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    discord_user_id = db.Column(db.String(50), nullable=True)
+    enabled = db.Column(db.Boolean, default=True)
+    daily_limit = db.Column(db.Integer, default=5)
+    quiet_hours_start = db.Column(db.Time, nullable=True)
+    quiet_hours_end = db.Column(db.Time, nullable=True)
+    time_zone = db.Column(db.String(50), default='UTC')
+    receive_reminders = db.Column(db.Boolean, default=True)
+    receive_progress_updates = db.Column(db.Boolean, default=True)
+    message_mode = db.Column(db.String(20), default='both')  # Options: 'dm', 'channel', 'both'
+    
+    def __repr__(self):
+        return f'<DiscordPreference for User {self.user_id}>'
+
+class SystemSettings(db.Model):
+    __tablename__ = 'system_settings'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    setting_name = db.Column(db.String(100), unique=True, nullable=False)
+    setting_value = db.Column(db.Text, nullable=True)
+    setting_type = db.Column(db.String(20), default='string')  # string, boolean, number, json
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    @classmethod
+    def get_setting(cls, name, default=None):
+        """Get a setting value by name"""
+        setting = cls.query.filter_by(setting_name=name).first()
+        if not setting:
+            return default
+        
+        if setting.setting_type == 'boolean':
+            return setting.setting_value.lower() in ('true', 'yes', '1')
+        elif setting.setting_type == 'number':
+            try:
+                return float(setting.setting_value)
+            except (ValueError, TypeError):
+                return default
+        else:
+            return setting.setting_value
+    
+    @classmethod
+    def set_setting(cls, name, value, setting_type='string'):
+        """Set a setting value by name"""
+        setting = cls.query.filter_by(setting_name=name).first()
+        if not setting:
+            setting = cls(setting_name=name, setting_type=setting_type)
+            db.session.add(setting)
+        
+        setting.setting_value = str(value)
+        setting.setting_type = setting_type
+        db.session.commit()
+        return setting
+    
+    def __repr__(self):
+        return f'<SystemSetting {self.setting_name}>' 

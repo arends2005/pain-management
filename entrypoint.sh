@@ -30,9 +30,9 @@ app.config.from_object(Config)
 from app.extensions import db, migrate
 
 # Import all models to ensure they are registered with SQLAlchemy
-from app.models.user import User, TextPreference
-from app.models.injury import Injury
-from app.models.recovery_plan import RecoveryPlan, Medication, Exercise
+from app.models.user import User, TextPreference, DiscordPreference, SystemSettings
+from app.models.injury import Injury, ProgressLog
+from app.models.recovery_plan import RecoveryPlan, Medication, Exercise, DiscordInteractionLog, MedicationDose, ExerciseSession
 
 db.init_app(app)
 with app.app_context():

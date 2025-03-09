@@ -1,14 +1,15 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from datetime import datetime, date
 from app.extensions import db
-from app.models.user import User, TextPreference
+from app.models.user import User, TextPreference, SystemSettings, DiscordPreference
 from app.models.injury import Injury, ProgressLog
-from app.models.recovery_plan import RecoveryPlan, Medication, Exercise
+from app.models.recovery_plan import RecoveryPlan, Medication, Exercise, Reminder, DiscordInteractionLog
 from app.forms.user_forms import (InjuryForm, ProgressLogForm, RecoveryPlanForm, 
-                                MedicationForm, ExerciseForm, TextPreferenceForm, ProfileForm)
-from app.forms.admin_forms import UserForm, CreateUserForm
+                                MedicationForm, ExerciseForm, TextPreferenceForm, ProfileForm, DiscordPreferenceForm)
+from app.forms.admin_forms import UserForm, CreateUserForm, SystemSettingsForm
 import logging
+import requests
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -234,6 +235,86 @@ def user_text_preferences(user_id):
         return redirect(url_for('admin.show_user', id=user.id))
     
     return render_template('admin/text_preferences.html', form=form, user=user)
+
+# Discord Preferences
+@admin.route('/users/<int:user_id>/discord-preferences', methods=['GET', 'POST'])
+@admin_required
+def user_discord_preferences(user_id):
+    """Manage user's Discord preferences"""
+    user = User.query.get_or_404(user_id)
+    discord_pref = DiscordPreference.query.filter_by(user_id=user.id).first()
+    
+    if not discord_pref:
+        discord_pref = DiscordPreference(user_id=user.id, enabled=True)
+        db.session.add(discord_pref)
+        db.session.commit()
+    
+    form = DiscordPreferenceForm(obj=discord_pref)
+    
+    if form.validate_on_submit():
+        form.populate_obj(discord_pref)
+        db.session.commit()
+        flash('Discord preferences updated successfully!', 'success')
+        return redirect(url_for('admin.show_user', id=user.id))
+    
+    # Get the Discord invite URL from system settings
+    discord_invite_url = SystemSettings.get_setting('DISCORD_INVITE_URL', 
+                                                  current_app.config.get('DISCORD_INVITE_URL', ''))
+    
+    return render_template('admin/discord_preferences.html', form=form, user=user, discord_invite_url=discord_invite_url)
+
+@admin.route('/users/<int:user_id>/test-discord-connection', methods=['POST'])
+@admin_required
+def test_discord_connection(user_id):
+    """Test Discord connection for a user"""
+    user = User.query.get_or_404(user_id)
+    discord_pref = DiscordPreference.query.filter_by(user_id=user.id).first()
+    
+    if not discord_pref or not discord_pref.discord_user_id:
+        if request.is_json:
+            return jsonify({'success': False, 'message': 'Please save the Discord User ID first.'}), 400
+        flash('Please save the Discord User ID first.', 'warning')
+        return redirect(url_for('admin.user_discord_preferences', user_id=user.id))
+    
+    try:
+        # Create a test message
+        message = f"""**Discord Connection Test (Admin)**
+
+Hello {user.username}! This is a test message from the Pain Management App admin panel to verify your Discord connection.
+
+The bot will try to send messages to you in two ways:
+1. This direct message (DM) to you
+2. A message in a channel in a server where both you and the bot are members
+
+If you're seeing this, your Discord connection is working correctly!"""
+        
+        # Create a log entry for the Discord bot to pick up
+        test_log = DiscordInteractionLog(
+            user_id=user.id,
+            discord_user_id=discord_pref.discord_user_id,
+            message_type='system',
+            sent_message=message,
+            timestamp=datetime.now(),
+            completed=False  # Mark as not completed so it gets picked up
+        )
+        db.session.add(test_log)
+        db.session.commit()
+        
+        success_message = f'Test message queued! The user should receive Discord messages (DM and server channel) in the next minute.'
+        
+        if request.is_json:
+            return jsonify({'success': True, 'message': success_message})
+        
+        flash(success_message, 'success')
+    except Exception as e:
+        error_message = f'Error queuing test message: {str(e)}'
+        if request.is_json:
+            return jsonify({'success': False, 'message': error_message}), 500
+        flash(error_message, 'danger')
+        
+    if request.is_json:
+        return jsonify({'success': True})
+    return redirect(url_for('admin.user_discord_preferences', user_id=user.id))
 
 # Admin Profile Management
 @admin.route('/profile')
@@ -540,4 +621,34 @@ def new_user():
     elif request.method == 'POST':
         logger.error(f"User creation form validation failed. Errors: {form.errors}")
     
-    return render_template('admin/users/new.html', form=form) 
+    return render_template('admin/users/new.html', form=form)
+
+# System Settings
+@admin.route('/system-settings', methods=['GET', 'POST'])
+@admin_required
+def system_settings():
+    """Manage system settings"""
+    form = SystemSettingsForm()
+    
+    # Pre-populate the form with existing settings
+    if request.method == 'GET':
+        # Get Discord invite URL from system settings or from .env
+        discord_invite_url = SystemSettings.get_setting('DISCORD_INVITE_URL', 
+                                                       current_app.config.get('DISCORD_INVITE_URL', ''))
+        form.discord_invite_url.data = discord_invite_url
+    
+    if form.validate_on_submit():
+        # Save Discord invite URL to system settings
+        SystemSettings.set_setting('DISCORD_INVITE_URL', form.discord_invite_url.data)
+        flash('System settings updated successfully!', 'success')
+        return redirect(url_for('admin.system_settings'))
+    
+    return render_template('admin/system_settings.html', form=form)
+
+# Discord Bot Logs
+@admin.route('/discord-logs')
+@admin_required
+def discord_logs():
+    """View Discord bot interaction logs"""
+    logs = DiscordInteractionLog.query.order_by(DiscordInteractionLog.timestamp.desc()).limit(100).all()
+    return render_template('admin/discord_logs.html', logs=logs) 

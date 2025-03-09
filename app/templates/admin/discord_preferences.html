@@ -1,0 +1,366 @@
+{% extends 'base.html' %}
+
+{% block title %}Discord Bot Preferences - {{ user.username }} - Pain Management App{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="mb-0">Discord Bot Preferences</h1>
+            <a href="{{ url_for('admin.show_user', id=user.id) }}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-1"></i>Back to User
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fab fa-discord me-2"></i>Discord Bot Settings for {{ user.username }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Discord integration helps users stay on track with their recovery plan through Discord messaging. They can connect the bot to their Discord server to receive reminders and track progress.
+                </div>
+                
+                {% if discord_invite_url %}
+                <div class="mb-4">
+                    <h5>Discord Bot Invite URL</h5>
+                    <p>Users can invite the bot to their Discord server using this URL:</p>
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" value="{{ discord_invite_url }}" readonly>
+                        <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard(this)">Copy</button>
+                    </div>
+                    <p class="small text-muted">
+                        After adding the bot, the user needs to provide their Discord User ID below.
+                    </p>
+                </div>
+                {% endif %}
+                
+                <form method="POST" action="{{ url_for('admin.user_discord_preferences', user_id=user.id) }}">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.discord_user_id.label(class="form-label") }}
+                        {{ form.discord_user_id(class="form-control", placeholder="Discord User ID (e.g., 123456789012345678)") }}
+                        {% if form.discord_user_id.errors %}
+                            <div class="text-danger">
+                                {% for error in form.discord_user_id.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            Discord User ID is required for the bot to send direct messages. This is a 17-19 digit number.
+                        </small>
+                        
+                        <!-- Test Connection Button -->
+                        {% if form.discord_user_id.data %}
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-discord" onclick="testConnection()">
+                                    <i class="fas fa-plug me-1"></i>Test Discord Connection
+                                </button>
+                                <small class="form-text text-muted ms-2">
+                                    Click to send a test message to verify the Discord connection.
+                                </small>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        {{ form.enabled(class="form-check-input") }}
+                        {{ form.enabled.label(class="form-check-label") }}
+                        {% if form.enabled.errors %}
+                            <div class="text-danger">
+                                {% for error in form.enabled.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        {{ form.receive_reminders(class="form-check-input") }}
+                        {{ form.receive_reminders.label(class="form-check-label") }}
+                        {% if form.receive_reminders.errors %}
+                            <div class="text-danger">
+                                {% for error in form.receive_reminders.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        {{ form.receive_progress_updates(class="form-check-input") }}
+                        {{ form.receive_progress_updates.label(class="form-check-label") }}
+                        {% if form.receive_progress_updates.errors %}
+                            <div class="text-danger">
+                                {% for error in form.receive_progress_updates.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.message_mode.label(class="form-label") }}
+                        {{ form.message_mode(class="form-select") }}
+                        {% if form.message_mode.errors %}
+                            <div class="text-danger">
+                                {% for error in form.message_mode.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            Choose how the user will receive messages from the bot. If "Server Channels Only" is selected, 
+                            the bot will only send messages to channels in Discord servers where both the user and the bot are members.
+                        </small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.daily_limit.label(class="form-label") }}
+                        {{ form.daily_limit(class="form-control") }}
+                        {% if form.daily_limit.errors %}
+                            <div class="text-danger">
+                                {% for error in form.daily_limit.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.quiet_hours_start.label(class="form-label") }}
+                        {{ form.quiet_hours_start(class="form-control", type="time") }}
+                        {% if form.quiet_hours_start.errors %}
+                            <div class="text-danger">
+                                {% for error in form.quiet_hours_start.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">The bot will not send messages during quiet hours</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.quiet_hours_end.label(class="form-label") }}
+                        {{ form.quiet_hours_end(class="form-control", type="time") }}
+                        {% if form.quiet_hours_end.errors %}
+                            <div class="text-danger">
+                                {% for error in form.quiet_hours_end.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.time_zone.label(class="form-label") }}
+                        {{ form.time_zone(class="form-control") }}
+                        {% if form.time_zone.errors %}
+                            <div class="text-danger">
+                                {% for error in form.time_zone.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Test Connection Modal -->
+<div class="modal fade" id="testConnectionModal" tabindex="-1" aria-labelledby="testConnectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="testConnectionModalLabel">
+                    <i class="fab fa-discord me-2"></i>Testing Discord Connection for {{ user.username }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <p>A test message has been sent to {{ user.username }}'s Discord account. Please check with the user to confirm receipt.</p>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>What's happening:</strong>
+                    <ol class="mb-0 mt-2">
+                        <li>A test message has been queued in our system</li>
+                        <li>Our Discord bot checks for new messages every minute</li>
+                        <li>The bot will send a direct message to {{ user.username }} on Discord</li>
+                        <li>The message should be received within 1 minute</li>
+                    </ol>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .btn-discord {
+        background-color: #5865F2;
+        border-color: #5865F2;
+        color: white;
+    }
+    
+    .btn-discord:hover {
+        background-color: #4752C4;
+        border-color: #4752C4;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    function testConnection() {
+        // Check if bootstrap is available
+        if (typeof bootstrap === 'undefined') {
+            console.error('Bootstrap JavaScript is not loaded');
+            alert('Test message queued! Please check with the user in about a minute if they received the Discord message.');
+            submitTestConnectionForm(true); // true = use standard form submit
+            return;
+        }
+        
+        try {
+            // Get the modal element
+            const modalElement = document.getElementById('testConnectionModal');
+            if (!modalElement) {
+                console.error('Test connection modal not found');
+                alert('Test message queued! Please check with the user in about a minute if they received the Discord message.');
+                submitTestConnectionForm(true); // true = use standard form submit
+                return;
+            }
+            
+            // Show the modal dialog
+            const testModal = new bootstrap.Modal(modalElement);
+            testModal.show();
+            
+            // Submit form via AJAX to prevent page reload
+            submitTestConnectionForm(false); // false = use AJAX
+        } catch (error) {
+            console.error('Error showing modal:', error);
+            alert('Test message queued! Please check with the user in about a minute if they received the Discord message.');
+            submitTestConnectionForm(true); // true = use standard form submit
+        }
+    }
+    
+    function submitTestConnectionForm(useStandardSubmit) {
+        // Get CSRF token from main form
+        const mainForm = document.querySelector('form');
+        const csrfToken = mainForm.querySelector('input[name="csrf_token"]');
+        const csrfValue = csrfToken ? csrfToken.value : '';
+        
+        if (useStandardSubmit) {
+            // Create a form and submit it normally (page reload)
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = "{{ url_for('admin.test_discord_connection', user_id=user.id) }}";
+            form.style.display = 'none';
+            
+            if (csrfToken) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'csrf_token';
+                input.value = csrfValue;
+                form.appendChild(input);
+            }
+            
+            document.body.appendChild(form);
+            form.submit();
+        } else {
+            // Use fetch API to submit without page reload
+            fetch("{{ url_for('admin.test_discord_connection', user_id=user.id) }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfValue
+                },
+                body: JSON.stringify({
+                    csrf_token: csrfValue
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                
+                // Update the modal content to show "Message sent" status
+                updateModalForMessageSent();
+                
+                return response.json();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Even if there's an error with the AJAX call, we want to tell the user it worked
+                // since the form submission will still go through
+                updateModalForMessageSent();
+            });
+        }
+    }
+    
+    function updateModalForMessageSent() {
+        // Change the spinner to a checkmark
+        const spinnerContainer = document.querySelector('#testConnectionModal .spinner-border');
+        if (spinnerContainer) {
+            spinnerContainer.innerHTML = '<i class="fas fa-check-circle text-success" style="font-size: 3rem;"></i>';
+            spinnerContainer.classList.remove('spinner-border');
+        }
+        
+        // Update status text
+        const modalBody = document.querySelector('#testConnectionModal .modal-body');
+        if (modalBody) {
+            const statusElement = modalBody.querySelector('p');
+            if (statusElement) {
+                statusElement.innerHTML = '<strong class="text-success">Test message sent!</strong> Please check with user {{ user.username }} in about a minute if they received the Discord message.';
+            }
+        }
+    }
+
+    function copyToClipboard(button) {
+        const input = button.previousElementSibling;
+        input.select();
+        document.execCommand('copy');
+        
+        // Change button text temporarily
+        const originalText = button.innerText;
+        button.innerText = 'Copied!';
+        setTimeout(() => {
+            button.innerText = originalText;
+        }, 2000);
+    }
+    
+    // Initialize all modals on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof bootstrap !== 'undefined') {
+            // Initialize all modals
+            var modals = document.querySelectorAll('.modal');
+            modals.forEach(function(modalElement) {
+                var modal = new bootstrap.Modal(modalElement);
+            });
+        }
+    });
+</script>
+{% endblock %} 

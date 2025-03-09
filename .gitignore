@@ -83,6 +83,12 @@ update_text_preferences.py
 fix_permissions.sh
 download_default_image.sh
 
+# Obsolete migration scripts and folders
+obsolete_migrations/
+add_*_column.py
+add_discord_columns.py
+update_discord_*.sh
+
 # Node packages if using any front-end build tools
 node_modules/
 npm-debug.log

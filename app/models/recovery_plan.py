@@ -60,6 +60,7 @@ class Medication(db.Model):
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=True)
     is_active = db.Column(db.Boolean, default=True)
+    discord_notifications = db.Column(db.Boolean, default=False)
     
     # Relationships
     doses = db.relationship('MedicationDose', backref='medication', lazy=True, cascade='all, delete-orphan')
@@ -82,6 +83,7 @@ class Exercise(db.Model):
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=True)
     is_active = db.Column(db.Boolean, default=True)
+    discord_notifications = db.Column(db.Boolean, default=False)
     
     # Relationships
     sessions = db.relationship('ExerciseSession', backref='exercise', lazy=True, cascade='all, delete-orphan')
@@ -136,4 +138,28 @@ class Reminder(db.Model):
         elif self.exercise_id:
             return f'<Reminder for Exercise {self.exercise_id} at {self.time}>'
         else:
-            return f'<Reminder for Plan {self.recovery_plan_id} at {self.time}>' 
+            return f'<Reminder for Plan {self.recovery_plan_id} at {self.time}>'
+
+class DiscordInteractionLog(db.Model):
+    __tablename__ = 'discord_interaction_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    discord_user_id = db.Column(db.String(50), nullable=False)
+    message_type = db.Column(db.String(20), nullable=False)  # 'medication', 'exercise', 'system'
+    medication_id = db.Column(db.Integer, db.ForeignKey('medications.id'), nullable=True)
+    exercise_id = db.Column(db.Integer, db.ForeignKey('exercises.id'), nullable=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    sent_message = db.Column(db.Text, nullable=False)
+    response = db.Column(db.Text, nullable=True)
+    response_time = db.Column(db.DateTime, nullable=True)
+    completed = db.Column(db.Boolean, default=False)
+    discord_message_id = db.Column(db.String(50), nullable=True)  # Store Discord message ID for deletion
+    
+    # Relationships
+    user = db.relationship('User', backref='discord_logs')
+    medication = db.relationship('Medication', backref='discord_logs')
+    exercise = db.relationship('Exercise', backref='discord_logs')
+    
+    def __repr__(self):
+        return f'<DiscordInteractionLog {self.id} - {self.message_type}>' 

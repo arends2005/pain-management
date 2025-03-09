@@ -1,4 +1,3 @@
-
 services:
   web:
     build: .
@@ -13,6 +12,22 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
+
+  discord-bot:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    depends_on:
+      - db
+      - web
+    entrypoint: ["/app/discord_bot_entrypoint.sh"]
     restart: unless-stopped
 
   db:

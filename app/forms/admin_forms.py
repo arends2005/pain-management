@@ -1,6 +1,7 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField, TelField
-from wtforms.validators import DataRequired, Length, Email, Regexp, EqualTo, Optional
+from flask_wtf.file import FileField, FileAllowed
+from wtforms import StringField, TextAreaField, BooleanField, PasswordField, SubmitField, SelectField, DateField, URLField, TelField
+from wtforms.validators import DataRequired, Email, Length, EqualTo, Optional, URL, Regexp
 from app.models.user import User
 
 class UserForm(FlaskForm):
@@ -41,4 +42,13 @@ class CreateUserForm(FlaskForm):
         EqualTo('password', message='Passwords must match')
     ])
     is_admin = BooleanField('Admin User')
-    submit = SubmitField('Create User') 
+    submit = SubmitField('Create User')
+
+class SystemSettingsForm(FlaskForm):
+    discord_invite_url = URLField('Discord Bot Invite URL', validators=[
+        DataRequired(),
+        URL(message='Please enter a valid URL')
+    ])
+    submit = SubmitField('Save Settings')
+    
+# Add any other admin forms below... 

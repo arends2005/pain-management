@@ -26,6 +26,13 @@ class Config:
     TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
     TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER')
     
+    # Discord configuration
+    DISCORD_BOT_TOKEN = os.environ.get('DISCORD_BOT_TOKEN')
+    DISCORD_APPLICATION_ID = os.environ.get('DISCORD_APPLICATION_ID')
+    DISCORD_PUBLIC_KEY = os.environ.get('DISCORD_PUBLIC_KEY')
+    DISCORD_BOT_PERMISSIONS = os.environ.get('DISCORD_BOT_PERMISSIONS')
+    DISCORD_INVITE_URL = os.environ.get('DISCORD_INVITE_URL')
+    
     # App configuration
     INVITE_CODE = os.environ.get('INVITE_CODE')
     ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME')

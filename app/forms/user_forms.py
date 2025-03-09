@@ -79,6 +79,7 @@ class MedicationForm(FlaskForm):
     start_date = DateField('Start Date', validators=[DataRequired()], default=date.today)
     end_date = DateField('End Date (Optional)', validators=[Optional()])
     is_active = BooleanField('Active', default=True)
+    discord_notifications = BooleanField('Enable Discord Notifications', default=False)
     submit = SubmitField('Save Medication')
 
 class ExerciseForm(FlaskForm):
@@ -102,6 +103,7 @@ class ExerciseForm(FlaskForm):
     start_date = DateField('Start Date', validators=[DataRequired()], default=date.today)
     end_date = DateField('End Date (Optional)', validators=[Optional()])
     is_active = BooleanField('Active', default=True)
+    discord_notifications = BooleanField('Enable Discord Notifications', default=False)
     submit = SubmitField('Save Exercise')
 
 class TextPreferenceForm(FlaskForm):
@@ -150,4 +152,34 @@ class TwilioTestForm(FlaskForm):
         DataRequired(),
         Length(1, 160, message='Message must be between 1 and 160 characters')
     ], default="This is a test message from the Pain Management App.")
-    submit = SubmitField('Send Test Message') 
+    submit = SubmitField('Send Test Message')
+
+class DiscordPreferenceForm(FlaskForm):
+    discord_user_id = StringField('Discord User ID', validators=[
+        Optional(),
+        Regexp(r'^\d{17,19}$', 0, 'Discord User ID must be a valid 17-19 digit number')
+    ])
+    enabled = BooleanField('Enable Discord Reminders', default=True)
+    receive_reminders = BooleanField('Receive Discord Reminders', default=True)
+    receive_progress_updates = BooleanField('Receive Progress Updates', default=True)
+    message_mode = SelectField('Message Delivery Method', validators=[DataRequired()],
+                          choices=[
+                              ('both', 'Both Direct Messages and Server Channels'),
+                              ('dm', 'Direct Messages Only'),
+                              ('channel', 'Server Channels Only')
+                          ], default='both')
+    daily_limit = IntegerField('Maximum Daily Messages', validators=[
+        DataRequired(),
+        NumberRange(min=1, max=20, message='Please enter a value between 1 and 20')
+    ], default=5)
+    quiet_hours_start = TimeField('Quiet Hours Start (Optional)', validators=[Optional()])
+    quiet_hours_end = TimeField('Quiet Hours End (Optional)', validators=[Optional()])
+    time_zone = SelectField('Time Zone', validators=[DataRequired()],
+                          choices=[
+                              ('UTC', 'UTC'),
+                              ('US/Eastern', 'Eastern Time (US)'),
+                              ('US/Central', 'Central Time (US)'),
+                              ('US/Mountain', 'Mountain Time (US)'),
+                              ('US/Pacific', 'Pacific Time (US)')
+                          ], default='UTC')
+    submit = SubmitField('Save Preferences') 

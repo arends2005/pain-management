@@ -1,12 +1,13 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, g
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, g, abort
 from flask_login import login_required, current_user
 from datetime import datetime, date
 from app.extensions import db
-from app.models.user import User, TextPreference
+from app.models.user import User, TextPreference, DiscordPreference, SystemSettings
 from app.models.injury import Injury, ProgressLog
-from app.models.recovery_plan import RecoveryPlan, Medication, Exercise, MedicationDose, ExerciseSession
+from app.models.recovery_plan import RecoveryPlan, Medication, Exercise, MedicationDose, ExerciseSession, Reminder, DiscordInteractionLog
 from app.forms.user_forms import (InjuryForm, ProgressLogForm, RecoveryPlanForm, 
-                                MedicationForm, ExerciseForm, TextPreferenceForm, ProfileForm, TwilioTestForm)
+                                MedicationForm, ExerciseForm, TextPreferenceForm, ProfileForm, TwilioTestForm,
+                                DiscordPreferenceForm)
 import os
 from twilio.rest import Client
 from twilio.base.exceptions import TwilioRestException
@@ -557,4 +558,133 @@ def change_password():
         else:
             flash('Current password is incorrect', 'danger')
     
-    return render_template('user/change_password.html', form=form) 
+    return render_template('user/change_password.html', form=form)
+
+@user.route('/discord-preferences', methods=['GET', 'POST'])
+@login_required
+def discord_preferences():
+    discord_pref = DiscordPreference.query.filter_by(user_id=current_user.id).first()
+    if not discord_pref:
+        discord_pref = DiscordPreference(
+            user_id=current_user.id, 
+            enabled=True
+        )
+        db.session.add(discord_pref)
+        db.session.commit()
+    
+    form = DiscordPreferenceForm(obj=discord_pref)
+    
+    if form.validate_on_submit():
+        form.populate_obj(discord_pref)
+        db.session.commit()
+        flash('Discord preferences updated successfully!', 'success')
+        return redirect(url_for('user.profile'))
+    
+    # Get the Discord invite URL from system settings
+    discord_invite_url = SystemSettings.get_setting('DISCORD_INVITE_URL', 
+                                                  current_app.config.get('DISCORD_INVITE_URL', ''))
+    
+    return render_template('user/discord_preferences.html', form=form, discord_invite_url=discord_invite_url)
+
+@user.route('/test-discord-connection', methods=['POST'])
+@login_required
+def test_discord_connection():
+    """Test Discord connection for the current user"""
+    discord_pref = DiscordPreference.query.filter_by(user_id=current_user.id).first()
+    
+    if not discord_pref or not discord_pref.discord_user_id:
+        if request.is_json:
+            return jsonify({'success': False, 'message': 'Please save your Discord User ID first.'}), 400
+        flash('Please save your Discord User ID first.', 'warning')
+        return redirect(url_for('user.discord_preferences'))
+    
+    try:
+        # Create a test message
+        message = f"""**Discord Connection Test**
+
+Hello {current_user.username}! This is a test message from the Pain Management App to verify your Discord connection.
+
+The bot will try to send messages to you in two ways:
+1. This direct message (DM) to you
+2. A message in a channel in a server where both you and the bot are members
+
+If you're seeing this, your Discord connection is working correctly!"""
+        
+        # Create a log entry for the Discord bot to pick up
+        test_log = DiscordInteractionLog(
+            user_id=current_user.id,
+            discord_user_id=discord_pref.discord_user_id,
+            message_type='system',
+            sent_message=message,
+            timestamp=datetime.now(),
+            completed=False  # Mark as not completed so it gets picked up
+        )
+        db.session.add(test_log)
+        db.session.commit()
+        
+        success_message = 'Test message queued! Please check your Discord DMs and shared server channels in the next minute.'
+        
+        if request.is_json:
+            return jsonify({'success': True, 'message': success_message})
+        
+        flash(success_message, 'success')
+    except Exception as e:
+        error_message = f'Error queuing test message: {str(e)}'
+        if request.is_json:
+            return jsonify({'success': False, 'message': error_message}), 500
+        flash(error_message, 'danger')
+        
+    if request.is_json:
+        return jsonify({'success': True})
+    return redirect(url_for('user.discord_preferences'))
+
+@user.route('/delete-discord-messages', methods=['POST'])
+@login_required
+def delete_discord_messages():
+    """Delete all bot messages from user's Discord DMs"""
+    discord_pref = DiscordPreference.query.filter_by(user_id=current_user.id).first()
+    
+    if not discord_pref or not discord_pref.discord_user_id:
+        if request.is_json:
+            return jsonify({'success': False, 'message': 'No Discord User ID found. Please set up your Discord preferences first.'}), 400
+        flash('No Discord User ID found. Please set up your Discord preferences first.', 'warning')
+        return redirect(url_for('user.discord_preferences'))
+    
+    try:
+        # Create a system message to trigger the bot to delete messages
+        message = f"""**Discord Message Cleanup Request**
+
+User {current_user.username} has requested to delete all bot messages from their DMs.
+User ID: {current_user.id}
+Discord User ID: {discord_pref.discord_user_id}
+Timestamp: {datetime.now()}
+
+This is an automated message for logging purposes."""
+        
+        # Create a log entry for the Discord bot to pick up
+        cleanup_log = DiscordInteractionLog(
+            user_id=current_user.id,
+            discord_user_id=discord_pref.discord_user_id,
+            message_type='cleanup',  # Special type for cleanup requests
+            sent_message=message,
+            timestamp=datetime.now(),
+            completed=False  # Mark as not completed so it gets picked up
+        )
+        db.session.add(cleanup_log)
+        db.session.commit()
+        
+        success_message = 'Message cleanup request queued! The bot will delete all of its messages from your Discord DMs shortly.'
+        
+        if request.is_json:
+            return jsonify({'success': True, 'message': success_message})
+        
+        flash(success_message, 'success')
+    except Exception as e:
+        error_message = f'Error requesting message cleanup: {str(e)}'
+        if request.is_json:
+            return jsonify({'success': False, 'message': error_message}), 500
+        flash(error_message, 'danger')
+        
+    if request.is_json:
+        return jsonify({'success': True})
+    return redirect(url_for('user.discord_preferences')) 

@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}User Injuries - Pain Management App{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="mb-0">Injuries for {{ user.username }}</h1>
+            <div>
+                <a href="{{ url_for('admin.new_user_injury', user_id=user.id) }}" class="btn btn-success me-2">
+                    <i class="fas fa-plus me-1"></i>Add New Injury
+                </a>
+                <a href="{{ url_for('admin.show_user', id=user.id) }}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to User
+                </a>
+            </div>
+        </div>
+        <p class="lead mt-2">Manage and track injuries for this user.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-first-aid me-2"></i>Injuries</h5>
+            </div>
+            <div class="card-body">
+                {% if injuries %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Severity</th>
+                                    <th>Body Location</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for injury in injuries %}
+                                    <tr>
+                                        <td>{{ injury.name }}</td>
+                                        <td>{{ injury.injury_type }}</td>
+                                        <td>
+                                            {% if injury.severity == 'Mild' %}
+                                                <span class="badge bg-success">{{ injury.severity }}</span>
+                                            {% elif injury.severity == 'Moderate' %}
+                                                <span class="badge bg-warning">{{ injury.severity }}</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">{{ injury.severity }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ injury.body_location }}</td>
+                                        <td>{{ injury.date_of_injury.strftime('%Y-%m-%d') }}</td>
+                                        <td>
+                                            <a href="{{ url_for('admin.edit_injury', id=injury.id) }}" class="btn btn-sm btn-warning me-1">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteInjuryModal{{ injury.id }}">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                            
+                                            <!-- Delete Modal for each injury -->
+                                            <div class="modal fade" id="deleteInjuryModal{{ injury.id }}" tabindex="-1" aria-labelledby="deleteInjuryModalLabel{{ injury.id }}" aria-hidden="true">
+                                                <div class="modal-dialog">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header bg-danger text-white">
+                                                            <h5 class="modal-title" id="deleteInjuryModalLabel{{ injury.id }}">Confirm Deletion</h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <p>Are you sure you want to delete the injury <strong>{{ injury.name }}</strong>?</p>
+                                                            <div class="alert alert-warning">
+                                                                <i class="fas fa-exclamation-triangle me-2"></i> 
+                                                                <strong>Warning:</strong> Deleting this injury will also delete all associated recovery plans, medications, and exercises.
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                            <form action="{{ url_for('admin.delete_injury', id=injury.id) }}" method="POST" class="d-inline">
+                                                                <input type="hidden" name="cascade_delete" value="true">
+                                                                <button type="submit" class="btn btn-danger">Delete Injury</button>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>No injuries found for this user. Add a new injury to get started.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

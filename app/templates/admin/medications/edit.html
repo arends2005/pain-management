@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Medication - Pain Management App{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="mb-0">Edit Medication</h1>
+            <a href="{{ url_for('admin.show_recovery_plan', id=plan.id) }}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Recovery Plan
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-pills me-2"></i>Medication Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info mb-4">
+                    <strong>Recovery Plan:</strong> {{ plan.name }} for {{ user.username }}
+                </div>
+                
+                <form method="POST" action="{{ url_for('admin.edit_medication', id=medication.id) }}">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.name.label(class="form-label") }}
+                        {{ form.name(class="form-control", placeholder="Enter medication name") }}
+                        {% if form.name.errors %}
+                            <div class="text-danger">
+                                {% for error in form.name.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.dosage.label(class="form-label") }}
+                        {{ form.dosage(class="form-control", placeholder="e.g., 500mg, 2 tablets") }}
+                        {% if form.dosage.errors %}
+                            <div class="text-danger">
+                                {% for error in form.dosage.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.frequency.label(class="form-label") }}
+                        {{ form.frequency(class="form-control", placeholder="e.g., Twice daily, Every 4 hours") }}
+                        {% if form.frequency.errors %}
+                            <div class="text-danger">
+                                {% for error in form.frequency.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.start_date.label(class="form-label") }}
+                        {{ form.start_date(class="form-control", type="date") }}
+                        {% if form.start_date.errors %}
+                            <div class="text-danger">
+                                {% for error in form.start_date.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.end_date.label(class="form-label") }}
+                        {{ form.end_date(class="form-control", type="date") }}
+                        {% if form.end_date.errors %}
+                            <div class="text-danger">
+                                {% for error in form.end_date.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">Optional. Leave blank if the end date is unknown.</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.instructions.label(class="form-label") }}
+                        {{ form.instructions(class="form-control", rows=3, placeholder="Enter any specific instructions for taking this medication") }}
+                        {% if form.instructions.errors %}
+                            <div class="text-danger">
+                                {% for error in form.instructions.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        {{ form.is_active(class="form-check-input") }}
+                        {{ form.is_active.label(class="form-check-label") }}
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

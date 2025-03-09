@@ -1,0 +1,132 @@
+/* Custom styles for Pain Management App */
+
+/* General styles */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.footer {
+    margin-top: auto;
+}
+
+/* Card styles */
+.card {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+/* Dashboard stats */
+.stats-card {
+    border-left: 4px solid #0d6efd;
+    border-radius: 4px;
+}
+
+.stats-card .card-body {
+    padding: 1.25rem;
+}
+
+.stats-card .stats-icon {
+    font-size: 2rem;
+    color: #0d6efd;
+}
+
+/* Pain level visualization */
+.pain-level {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+    border-radius: 50%;
+    color: white;
+    font-weight: bold;
+}
+
+.pain-mild {
+    background-color: #28a745;
+}
+
+.pain-moderate {
+    background-color: #ffc107;
+}
+
+.pain-severe {
+    background-color: #dc3545;
+}
+
+/* Progress chart container */
+.chart-container {
+    height: 300px;
+    margin-bottom: 2rem;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .chart-container {
+        height: 250px;
+    }
+}
+
+/* Form styling */
+.form-label {
+    font-weight: 500;
+}
+
+/* Custom button styles */
+.btn-action {
+    margin-right: 5px;
+}
+
+/* Timeline for recovery progress */
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline:before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 2px;
+    background-color: #0d6efd;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-item:before {
+    content: '';
+    position: absolute;
+    left: -34px;
+    top: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #0d6efd;
+}
+
+/* Medication and exercise cards */
+.med-card, .exercise-card {
+    margin-bottom: 15px;
+}
+
+.med-card .card-header, .exercise-card .card-header {
+    padding: 0.5rem 1rem;
+}
+
+/* Active/Inactive status badges */
+.status-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+} 

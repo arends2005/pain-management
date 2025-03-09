@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}User Management - Pain Management App{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1 class="mb-3">User Management</h1>
+        <p class="lead">Manage user accounts, view and edit user profiles.</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-users me-2"></i>Users</h5>
+                <a href="{{ url_for('admin.new_user') }}" class="btn btn-sm btn-light">
+                    <i class="fas fa-plus me-1"></i>Add User
+                </a>
+            </div>
+            <div class="card-body">
+                {% if users %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Created</th>
+                                    <th>Last Login</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                    <tr>
+                                        <td>{{ user.username }}</td>
+                                        <td>{{ user.email }}</td>
+                                        <td>{{ user.phone_number }}</td>
+                                        <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                                        <td>
+                                            {% if user.last_login %}
+                                                {{ user.last_login.strftime('%Y-%m-%d %H:%M') }}
+                                            {% else %}
+                                                Never
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('admin.show_user', id=user.id) }}" class="btn btn-sm btn-primary btn-action" title="View User">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('admin.edit_user', id=user.id) }}" class="btn btn-sm btn-warning btn-action" title="Edit User">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{{ url_for('admin.user_injuries', user_id=user.id) }}" class="btn btn-sm btn-info btn-action" title="View Injuries">
+                                                <i class="fas fa-first-aid"></i>
+                                            </a>
+                                            <a href="{{ url_for('admin.user_recovery_plans', user_id=user.id) }}" class="btn btn-sm btn-secondary btn-action" title="View Recovery Plans">
+                                                <i class="fas fa-clipboard-list"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center my-4">No users found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // You can add any custom JavaScript for this page here
+</script>
+{% endblock %} 

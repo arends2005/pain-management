@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% block title %}Direct Twilio API Test - Pain Management App{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="mb-0">Direct Twilio API Test</h1>
+            <div>
+                <a href="{{ url_for('user.test_twilio') }}" class="btn btn-outline-primary me-2">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Twilio Test
+                </a>
+                <a href="{{ url_for('user.dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+        <p class="lead mt-2">Test Twilio connectivity by making direct API calls, bypassing the Twilio client library.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-code me-2"></i>Direct API Request</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('user.direct_twilio_test') }}">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.phone_number.label(class="form-label") }}
+                        {{ form.phone_number(class="form-control", placeholder="Enter phone number to receive test message") }}
+                        {% if form.phone_number.errors %}
+                            <div class="text-danger">
+                                {% for error in form.phone_number.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">Format: +1XXXXXXXXXX (include country code)</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.message.label(class="form-label") }}
+                        {{ form.message(class="form-control", rows=3, placeholder="Enter test message") }}
+                        {% if form.message.errors %}
+                            <div class="text-danger">
+                                {% for error in form.message.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if result %}
+<div class="row mt-4">
+    <div class="col-md-10 offset-md-1">
+        <div class="card">
+            <div class="card-header bg-{% if result.status_code == 201 %}success{% else %}danger{% endif %} text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-{% if result.status_code == 201 %}check-circle{% else %}exclamation-triangle{% endif %} me-2"></i>
+                    API Response (Status Code: {{ result.status_code|default('N/A') }})
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6>Response Headers:</h6>
+                <pre class="bg-light p-3 mb-3"><code>{{ result.headers|tojson(indent=2) }}</code></pre>
+                
+                <h6>Response Body:</h6>
+                <pre class="bg-light p-3"><code>{{ result.response_text }}</code></pre>
+                
+                {% if result.error %}
+                <h6 class="mt-3">Error:</h6>
+                <div class="alert alert-danger">
+                    <strong>{{ result.type }}:</strong> {{ result.error }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if curl_command %}
+<div class="row mt-4">
+    <div class="col-md-10 offset-md-1">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-terminal me-2"></i>Equivalent CURL Command</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-2">You can test the Twilio API directly using this command:</p>
+                <pre class="bg-light p-3"><code>{{ curl_command }}</code></pre>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Note:</strong> Be careful with this command as it contains your Twilio auth token. Do not share it with others.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row mt-4">
+    <div class="col-md-10 offset-md-1">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Common Response Codes</h5>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Status Code</th>
+                            <th>Meaning</th>
+                            <th>Action Required</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge bg-success">201</span></td>
+                            <td>Success - Message created</td>
+                            <td>None! Your message was accepted by Twilio for delivery</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge bg-danger">400</span></td>
+                            <td>Bad Request</td>
+                            <td>Check your parameters, especially phone number formats</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge bg-danger">401</span></td>
+                            <td>Unauthorized</td>
+                            <td>Your Twilio credentials are incorrect</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge bg-warning">403</span></td>
+                            <td>Forbidden</td>
+                            <td>Your Twilio account may be in trial mode and the recipient's number is not verified</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    <strong>Tip:</strong> If your API request succeeds (status 201) but you still don't receive a text, you likely need to verify your phone number in your Twilio account.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

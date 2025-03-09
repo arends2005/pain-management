@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+
+{% block title %}User Profile - {{ user.username }} - Pain Management App{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="mb-0">User Profile</h1>
+            <a href="{{ url_for('admin.users') }}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Users
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-user me-2"></i>User Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <img src="{{ url_for('static', filename=user.profile_picture if user.profile_picture.startswith('uploads/') else 'img/' + user.profile_picture) }}" 
+                         alt="{{ user.username }}" 
+                         class="rounded-circle img-thumbnail" 
+                         style="width: 150px; height: 150px; object-fit: cover;">
+                </div>
+
+                <table class="table">
+                    <tr>
+                        <th>Username:</th>
+                        <td>{{ user.username }}</td>
+                    </tr>
+                    <tr>
+                        <th>Email:</th>
+                        <td>{{ user.email }}</td>
+                    </tr>
+                    <tr>
+                        <th>Phone:</th>
+                        <td>{{ user.phone_number }}</td>
+                    </tr>
+                    <tr>
+                        <th>Role:</th>
+                        <td>{% if user.is_admin %}Admin{% else %}User{% endif %}</td>
+                    </tr>
+                    <tr>
+                        <th>Created:</th>
+                        <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                    </tr>
+                    <tr>
+                        <th>Last Login:</th>
+                        <td>
+                            {% if user.last_login %}
+                                {{ user.last_login.strftime('%Y-%m-%d %H:%M') }}
+                            {% else %}
+                                Never
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('admin.edit_user', id=user.id) }}" class="btn btn-warning">
+                        <i class="fas fa-edit me-1"></i>Edit User
+                    </a>
+                    <a href="{{ url_for('admin.user_text_preferences', user_id=user.id) }}" class="btn btn-info">
+                        <i class="fas fa-sms me-1"></i>Text Preferences
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-first-aid me-2"></i>Injuries</h5>
+                <a href="{{ url_for('admin.user_injuries', user_id=user.id) }}" class="btn btn-sm btn-light">
+                    <i class="fas fa-eye me-1"></i>View All
+                </a>
+            </div>
+            <div class="card-body">
+                {% if injuries %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Severity</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for injury in injuries %}
+                                    <tr>
+                                        <td>{{ injury.name }}</td>
+                                        <td>{{ injury.injury_type }}</td>
+                                        <td>{{ injury.severity }}</td>
+                                        <td>{{ injury.date_of_injury.strftime('%Y-%m-%d') }}</td>
+                                        <td>
+                                            <a href="{{ url_for('admin.edit_injury', id=injury.id) }}" class="btn btn-sm btn-warning btn-action">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center my-3">No injuries recorded.</p>
+                {% endif %}
+                <div class="d-grid gap-2 mt-3">
+                    <a href="{{ url_for('admin.new_user_injury', user_id=user.id) }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>Add Injury
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Recovery Plans</h5>
+                <a href="{{ url_for('admin.user_recovery_plans', user_id=user.id) }}" class="btn btn-sm btn-light">
+                    <i class="fas fa-eye me-1"></i>View All
+                </a>
+            </div>
+            <div class="card-body">
+                {% if recovery_plans %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Injury</th>
+                                    <th>Start Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for plan in recovery_plans %}
+                                    <tr>
+                                        <td>{{ plan.name }}</td>
+                                        <td>{{ plan.injury.name }}</td>
+                                        <td>{{ plan.start_date.strftime('%Y-%m-%d') }}</td>
+                                        <td>
+                                            {% if plan.is_active %}
+                                                <span class="badge bg-success">Active</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Inactive</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('admin.show_recovery_plan', id=plan.id) }}" class="btn btn-sm btn-primary btn-action">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('admin.edit_recovery_plan', id=plan.id) }}" class="btn btn-sm btn-warning btn-action">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center my-3">No recovery plans created.</p>
+                {% endif %}
+                <div class="d-grid gap-2 mt-3">
+                    <a href="{{ url_for('admin.new_user_recovery_plan', user_id=user.id) }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>Add Recovery Plan
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

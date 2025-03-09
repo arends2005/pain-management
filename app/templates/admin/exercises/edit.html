@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Exercise - Pain Management App{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="mb-0">Edit Exercise</h1>
+            <a href="{{ url_for('admin.show_recovery_plan', id=plan.id) }}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Recovery Plan
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-dumbbell me-2"></i>Exercise Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info mb-4">
+                    <strong>Recovery Plan:</strong> {{ plan.name }} for {{ user.username }}
+                </div>
+                
+                <form method="POST" action="{{ url_for('admin.edit_exercise', id=exercise.id) }}">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.name.label(class="form-label") }}
+                        {{ form.name(class="form-control", placeholder="Enter exercise name") }}
+                        {% if form.name.errors %}
+                            <div class="text-danger">
+                                {% for error in form.name.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.frequency.label(class="form-label") }}
+                        {{ form.frequency(class="form-control", placeholder="e.g., Daily, 3 times per week") }}
+                        {% if form.frequency.errors %}
+                            <div class="text-danger">
+                                {% for error in form.frequency.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.duration.label(class="form-label") }}
+                        {{ form.duration(class="form-control", placeholder="e.g., 15 minutes, 30 seconds") }}
+                        {% if form.duration.errors %}
+                            <div class="text-danger">
+                                {% for error in form.duration.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.repetitions.label(class="form-label") }}
+                        {{ form.repetitions(class="form-control", placeholder="e.g., 3 sets of 10, 20 reps") }}
+                        {% if form.repetitions.errors %}
+                            <div class="text-danger">
+                                {% for error in form.repetitions.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.start_date.label(class="form-label") }}
+                        {{ form.start_date(class="form-control", type="date") }}
+                        {% if form.start_date.errors %}
+                            <div class="text-danger">
+                                {% for error in form.start_date.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.end_date.label(class="form-label") }}
+                        {{ form.end_date(class="form-control", type="date") }}
+                        {% if form.end_date.errors %}
+                            <div class="text-danger">
+                                {% for error in form.end_date.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">Optional. Leave blank if the end date is unknown.</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.description.label(class="form-label") }}
+                        {{ form.description(class="form-control", rows=3, placeholder="Describe the exercise") }}
+                        {% if form.description.errors %}
+                            <div class="text-danger">
+                                {% for error in form.description.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.instructions.label(class="form-label") }}
+                        {{ form.instructions(class="form-control", rows=3, placeholder="Enter detailed instructions for performing the exercise") }}
+                        {% if form.instructions.errors %}
+                            <div class="text-danger">
+                                {% for error in form.instructions.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        {{ form.is_active(class="form-check-input") }}
+                        {{ form.is_active.label(class="form-check-label") }}
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

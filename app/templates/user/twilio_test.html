@@ -1,0 +1,304 @@
+{% extends 'base.html' %}
+
+{% block title %}Test Twilio Integration - Pain Management App{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="mb-0">Test Twilio Integration</h1>
+            <div>
+                <a href="{{ url_for('user.direct_twilio_test') }}" class="btn btn-outline-info me-2">
+                    <i class="fas fa-code me-1"></i>Direct API Test
+                </a>
+                <a href="{{ url_for('user.dashboard') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+        <p class="lead mt-2">Send a test message to verify your Twilio integration is working.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-sms me-2"></i>Send Test Message</h5>
+            </div>
+            <div class="card-body">
+                {% if success_message %}
+                    <div class="alert alert-success mb-4">
+                        <i class="fas fa-check-circle me-2"></i>{{ success_message }}
+                    </div>
+                {% endif %}
+                
+                {% if delivery_warning %}
+                    <div class="alert alert-warning mb-4">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Warning:</strong> {{ delivery_warning }}
+                    </div>
+                {% endif %}
+                
+                {% if error_message %}
+                    <div class="alert alert-danger mb-4">
+                        <i class="fas fa-exclamation-circle me-2"></i>{{ error_message }}
+                        
+                        {% if error_details %}
+                            <hr>
+                            <div class="mt-2">
+                                <strong>Error Details:</strong>
+                                <ul class="mb-0 mt-1">
+                                    {% for key, value in error_details.items() %}
+                                        {% if value %}
+                                            <li><strong>{{ key|title }}:</strong> {{ value }}</li>
+                                        {% endif %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+                
+                <form method="POST" action="{{ url_for('user.test_twilio') }}">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.phone_number.label(class="form-label") }}
+                        {{ form.phone_number(class="form-control", placeholder="Enter phone number to receive test message") }}
+                        {% if form.phone_number.errors %}
+                            <div class="text-danger">
+                                {% for error in form.phone_number.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">Format: +1XXXXXXXXXX (include country code)</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.message.label(class="form-label") }}
+                        {{ form.message(class="form-control", rows=3, placeholder="Enter test message") }}
+                        {% if form.message.errors %}
+                            <div class="text-danger">
+                                {% for error in form.message.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+                
+                <div class="mt-5">
+                    <h5>Twilio Configuration Status</h5>
+                    <ul class="list-group">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Twilio Account SID
+                            {% if twilio_config.account_sid %}
+                                <span class="badge bg-success rounded-pill">Configured</span>
+                            {% else %}
+                                <span class="badge bg-danger rounded-pill">Missing</span>
+                            {% endif %}
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Twilio Auth Token
+                            {% if twilio_config.auth_token %}
+                                <span class="badge bg-success rounded-pill">Configured</span>
+                            {% else %}
+                                <span class="badge bg-danger rounded-pill">Missing</span>
+                            {% endif %}
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Twilio Phone Number
+                            {% if twilio_config.phone_number %}
+                                <span class="badge bg-success rounded-pill">Configured</span>
+                            {% else %}
+                                <span class="badge bg-danger rounded-pill">Missing</span>
+                            {% endif %}
+                        </li>
+                        {% if account_type %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Account Type
+                            {% if account_type == 'Trial' %}
+                                <span class="badge bg-warning rounded-pill">{{ account_type }}</span>
+                            {% else %}
+                                <span class="badge bg-success rounded-pill">{{ account_type }}</span>
+                            {% endif %}
+                        </li>
+                        {% endif %}
+                    </ul>
+                    
+                    {% if account_type == 'Trial' %}
+                        <div class="alert alert-warning mt-3">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Trial Account Limitations:</strong> Your Twilio account is on a trial plan. Messages can only be sent to verified phone numbers.
+                            <div class="mt-2">
+                                <a href="https://www.twilio.com/console/phone-numbers/verified" target="_blank" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-external-link-alt me-1"></i>Verify Your Phone Number
+                                </a>
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    {% if not twilio_config.account_sid or not twilio_config.auth_token or not twilio_config.phone_number %}
+                        <div class="alert alert-warning mt-3">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Missing Configuration:</strong> Please make sure to set up the Twilio credentials in your .env file:
+                            <ul class="mt-2 mb-0">
+                                <li>TWILIO_ACCOUNT_SID</li>
+                                <li>TWILIO_AUTH_TOKEN</li>
+                                <li>TWILIO_PHONE_NUMBER</li>
+                            </ul>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if recent_logs %}
+<div class="row mt-4">
+    <div class="col-md-10 offset-md-1">
+        <div class="card">
+            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Twilio Activity Logs</h5>
+                <a href="{{ url_for('user.twilio_logs') }}" class="btn btn-sm btn-light">
+                    <i class="fas fa-list me-1"></i>View All Logs
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Event</th>
+                                <th>Phone</th>
+                                <th>Status</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in recent_logs %}
+                                <tr class="{% if log.event == 'ERROR' %}table-danger{% elif log.event == 'SUCCESS' %}table-success{% endif %}">
+                                    <td>{{ log.timestamp|default('N/A') }}</td>
+                                    <td>
+                                        {% if log.event == 'REQUEST' %}
+                                            <span class="badge bg-primary">REQUEST</span>
+                                        {% elif log.event == 'SUCCESS' %}
+                                            <span class="badge bg-success">SUCCESS</span>
+                                        {% elif log.event == 'ERROR' %}
+                                            <span class="badge bg-danger">ERROR</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ log.event|default('UNKNOWN') }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ log.phone|default('N/A') }}</td>
+                                    <td>
+                                        {% if log.event == 'SUCCESS' %}
+                                            <span class="text-success">
+                                                <i class="fas fa-check-circle me-1"></i>Sent
+                                            </span>
+                                        {% elif log.event == 'ERROR' %}
+                                            <span class="text-danger">
+                                                <i class="fas fa-times-circle me-1"></i>Failed
+                                            </span>
+                                        {% elif log.event == 'REQUEST' %}
+                                            <span class="text-primary">
+                                                <i class="fas fa-spinner me-1"></i>Attempted
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if log.event == 'SUCCESS' %}
+                                            SID: {{ log.message_sid|truncate(10, True) }}
+                                        {% elif log.event == 'ERROR' %}
+                                            {{ log.error_message|default('Unknown error')|truncate(40, True) }}
+                                        {% elif log.event == 'REQUEST' %}
+                                            Msg length: {{ log.message_length }}
+                                        {% endif %}
+                                        
+                                        <button class="btn btn-sm btn-outline-secondary" 
+                                                type="button" 
+                                                data-bs-toggle="collapse" 
+                                                data-bs-target="#log-{{ loop.index }}" 
+                                                aria-expanded="false">
+                                            <i class="fas fa-info-circle"></i>
+                                        </button>
+                                        
+                                        <div class="collapse mt-2" id="log-{{ loop.index }}">
+                                            <div class="card card-body">
+                                                <pre class="mb-0" style="font-size: 0.8rem;">{{ log|tojson(indent=2) }}</pre>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="mt-4">
+    <button class="btn btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#troubleshootingInfo" aria-expanded="false">
+        <i class="fas fa-tools me-1"></i>Show Troubleshooting Steps
+    </button>
+    
+    <div class="collapse mt-3" id="troubleshootingInfo">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Twilio Troubleshooting Guide</h5>
+            </div>
+            <div class="card-body">
+                <h6 class="mb-3">If your messages are accepted but not delivered:</h6>
+                <ol>
+                    <li class="mb-2">
+                        <strong>Check if you're using a Twilio Trial account</strong> - Trial accounts can <em>only</em> send messages to verified phone numbers
+                    </li>
+                    <li class="mb-2">
+                        <strong>Verify your phone number</strong> - Go to the <a href="https://www.twilio.com/console/phone-numbers/verified" target="_blank">Twilio Console</a> and add your phone number to the verified list
+                    </li>
+                    <li class="mb-2">
+                        <strong>Check phone number format</strong> - Always use E.164 format (e.g., +1XXXXXXXXXX) with the plus sign and country code
+                    </li>
+                    <li class="mb-2">
+                        <strong>Confirm Twilio credit</strong> - Make sure your account has enough credit to send messages
+                    </li>
+                    <li class="mb-2">
+                        <strong>Check carrier filters</strong> - Some carriers may block messages from short codes or toll-free numbers
+                    </li>
+                </ol>
+                
+                <h6 class="mt-4 mb-3">Testing API connectivity directly:</h6>
+                <p>You can test your Twilio connectivity with the following curl command (replace with your specific values):</p>
+                <pre class="bg-light p-3"><code>curl 'https://api.twilio.com/2010-04-01/Accounts/YOUR_ACCOUNT_SID/Messages.json' \
+-X POST \
+--data-urlencode 'To=+1XXXXXXXXXX' \
+--data-urlencode 'From=+1XXXXXXXXXX' \
+--data-urlencode 'Body=Test message' \
+-u YOUR_ACCOUNT_SID:YOUR_AUTH_TOKEN</code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+</script>
+{% endblock %} 

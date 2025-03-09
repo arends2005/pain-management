@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Pain Management App{% endblock %}
+
+{% block content %}
+<div class="row mt-5">
+    <div class="col-md-8 offset-md-2 text-center">
+        <h1 class="display-4 mb-4">Welcome to the Pain Management App</h1>
+        <p class="lead">
+            Track your recovery from injuries, follow your treatment plan, and receive helpful reminders.
+        </p>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-first-aid fa-3x mb-3 text-primary"></i>
+                <h5 class="card-title">Track Your Injuries</h5>
+                <p class="card-text">Record details about your injuries and monitor your recovery progress over time.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-clipboard-list fa-3x mb-3 text-primary"></i>
+                <h5 class="card-title">Manage Recovery Plans</h5>
+                <p class="card-text">Create customized recovery plans that include medications and exercises.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-sms fa-3x mb-3 text-primary"></i>
+                <h5 class="card-title">Get Timely Reminders</h5>
+                <p class="card-text">Receive text message reminders for medications and exercises to stay on track.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-6 offset-md-3 text-center">
+        {% if not current_user.is_authenticated %}
+            <p>Get started by creating an account or logging in:</p>
+            <div class="d-grid gap-2 d-md-block">
+                <a href="{{ url_for('auth.register') }}" class="btn btn-primary me-md-2">Register</a>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary">Login</a>
+            </div>
+        {% else %}
+            <div class="d-grid gap-2 col-6 mx-auto">
+                {% if current_user.is_admin %}
+                    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-primary">Go to Admin Dashboard</a>
+                {% else %}
+                    <a href="{{ url_for('user.dashboard') }}" class="btn btn-primary">Go to Your Dashboard</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

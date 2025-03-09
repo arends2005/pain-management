@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}My Profile - Pain Management App{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="mb-0">My Profile</h1>
+            <a href="{{ url_for('user.dashboard') }}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-user me-2"></i>Profile Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <img src="{{ url_for('static', filename=current_user.profile_picture if current_user.profile_picture.startswith('uploads/') else 'img/' + current_user.profile_picture) }}" 
+                         alt="{{ current_user.username }}" 
+                         class="rounded-circle img-thumbnail" 
+                         style="width: 150px; height: 150px; object-fit: cover;">
+                </div>
+                
+                <div class="mb-3 text-center">
+                    <h4>{{ current_user.username }}</h4>
+                    <p class="text-muted">{{ current_user.email }}</p>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('user.edit_profile') }}" class="btn btn-warning">
+                        <i class="fas fa-edit me-1"></i>Edit Profile
+                    </a>
+                    <a href="{{ url_for('user.text_preferences') }}" class="btn btn-info">
+                        <i class="fas fa-sms me-1"></i>Text Preferences
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Account Security</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('user.change_password') }}" class="btn btn-secondary">
+                        <i class="fas fa-key me-1"></i>Change Password
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Account Details</h5>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <tr>
+                        <th style="width: 30%">Username:</th>
+                        <td>{{ current_user.username }}</td>
+                    </tr>
+                    <tr>
+                        <th>Email:</th>
+                        <td>{{ current_user.email }}</td>
+                    </tr>
+                    <tr>
+                        <th>Phone Number:</th>
+                        <td>{{ current_user.phone_number or 'Not provided' }}</td>
+                    </tr>
+                    <tr>
+                        <th>Member Since:</th>
+                        <td>{{ current_user.created_at.strftime('%Y-%m-%d') }}</td>
+                    </tr>
+                    <tr>
+                        <th>Last Login:</th>
+                        <td>
+                            {% if current_user.last_login %}
+                                {{ current_user.last_login.strftime('%Y-%m-%d %H:%M') }}
+                            {% else %}
+                                Never
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+                
+                <div class="mt-4">
+                    <h5>Account Statistics</h5>
+                    <div class="row text-center mt-3">
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h3 class="text-primary">{{ injuries|length }}</h3>
+                                    <p class="text-muted mb-0">Injuries Tracked</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h3 class="text-success">{{ active_plans|length }}</h3>
+                                    <p class="text-muted mb-0">Active Recovery Plans</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h3 class="text-info">{{ completed_exercises }}</h3>
+                                    <p class="text-muted mb-0">Exercises Completed</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

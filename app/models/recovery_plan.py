@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import datetime, time, date
 from app.extensions import db
 
 class RecoveryPlan(db.Model):
@@ -19,6 +19,31 @@ class RecoveryPlan(db.Model):
     medications = db.relationship('Medication', backref='recovery_plan', lazy=True, cascade='all, delete-orphan')
     exercises = db.relationship('Exercise', backref='recovery_plan', lazy=True, cascade='all, delete-orphan')
     reminders = db.relationship('Reminder', backref='recovery_plan', lazy=True, cascade='all, delete-orphan')
+    
+    @property
+    def progress(self):
+        """Calculate recovery plan progress based on time elapsed or completed sessions"""
+        if not self.is_active:
+            return 100
+            
+        if not self.end_date:
+            # If no end date, estimate based on activity completion rate
+            med_doses = sum(len(med.doses) for med in self.medications if med.is_active)
+            ex_sessions = sum(len(ex.sessions) for ex in self.exercises if ex.is_active)
+            total_activities = max(1, len(self.medications) + len(self.exercises))
+            
+            # Simplified calculation for now
+            return min(95, (med_doses + ex_sessions) * 5)
+        
+        # Calculate progress based on time elapsed
+        today = date.today()
+        total_days = (self.end_date - self.start_date).days
+        if total_days <= 0:
+            return 50  # Default value if dates are invalid
+            
+        days_elapsed = (today - self.start_date).days
+        progress = min(95, max(5, int((days_elapsed / total_days) * 100)))
+        return progress
     
     def __repr__(self):
         return f'<RecoveryPlan {self.name} for User {self.user_id}>'

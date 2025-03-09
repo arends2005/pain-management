@@ -121,8 +121,12 @@ def add_progress_log(id):
 @user.route('/recovery-plans')
 @login_required
 def recovery_plans():
-    plans = RecoveryPlan.query.filter_by(user_id=current_user.id).all()
-    return render_template('user/recovery_plans/index.html', plans=plans)
+    all_plans = RecoveryPlan.query.filter_by(user_id=current_user.id).all()
+    active_plans = [plan for plan in all_plans if plan.is_active]
+    past_plans = [plan for plan in all_plans if not plan.is_active]
+    return render_template('user/recovery_plans/index.html', 
+                          active_plans=active_plans,
+                          past_plans=past_plans)
 
 @user.route('/recovery-plans/new', methods=['GET', 'POST'])
 @login_required

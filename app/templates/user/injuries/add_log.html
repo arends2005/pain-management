@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Progress Log - {{ injury.name }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="mb-0">Add Progress Log</h1>
+            <a href="{{ url_for('user.show_injury', id=injury.id) }}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Injury
+            </a>
+        </div>
+        <p class="mt-2 text-muted">Tracking progress for: <strong>{{ injury.name }}</strong></p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Progress Log Details</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('user.add_progress_log', id=injury.id) }}">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.date.label(class="form-label") }}
+                        {{ form.date(class="form-control", type="date") }}
+                        {% if form.date.errors %}
+                            <div class="text-danger">
+                                {% for error in form.date.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.pain_level.label(class="form-label") }}
+                        <div class="pain-level-container">
+                            <input type="range" class="form-range" min="1" max="10" step="1" id="painSlider" oninput="updatePainLabel(this.value)">
+                            <div class="d-flex justify-content-between">
+                                <span>Mild (1)</span>
+                                <span id="painLabel" class="badge bg-warning">5</span>
+                                <span>Severe (10)</span>
+                            </div>
+                        </div>
+                        {{ form.pain_level(class="d-none", id="painLevelInput") }}
+                        {% if form.pain_level.errors %}
+                            <div class="text-danger">
+                                {% for error in form.pain_level.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.mobility.label(class="form-label") }}
+                        <div class="mobility-container">
+                            <input type="range" class="form-range" min="0" max="100" step="5" id="mobilitySlider" oninput="updateMobilityLabel(this.value)">
+                            <div class="d-flex justify-content-between">
+                                <span>Limited (0%)</span>
+                                <span id="mobilityLabel" class="badge bg-info">50%</span>
+                                <span>Full (100%)</span>
+                            </div>
+                        </div>
+                        {{ form.mobility(class="d-none", id="mobilityInput") }}
+                        {% if form.mobility.errors %}
+                            <div class="text-danger">
+                                {% for error in form.mobility.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.notes.label(class="form-label") }}
+                        {{ form.notes(class="form-control", rows=4, placeholder="Enter any observations, symptoms, or notes about your recovery progress") }}
+                        {% if form.notes.errors %}
+                            <div class="text-danger">
+                                {% for error in form.notes.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize sliders with form values
+        var painValue = {{ form.pain_level.data or 5 }};
+        var mobilityValue = {{ form.mobility.data or 50 }};
+        
+        document.getElementById('painSlider').value = painValue;
+        document.getElementById('painLevelInput').value = painValue;
+        document.getElementById('painLabel').textContent = painValue;
+        
+        document.getElementById('mobilitySlider').value = mobilityValue;
+        document.getElementById('mobilityInput').value = mobilityValue;
+        document.getElementById('mobilityLabel').textContent = mobilityValue + '%';
+        
+        // Add color classes
+        updatePainLabelColor(painValue);
+        updateMobilityLabelColor(mobilityValue);
+    });
+    
+    function updatePainLabel(value) {
+        document.getElementById('painLabel').textContent = value;
+        document.getElementById('painLevelInput').value = value;
+        updatePainLabelColor(value);
+    }
+    
+    function updateMobilityLabel(value) {
+        document.getElementById('mobilityLabel').textContent = value + '%';
+        document.getElementById('mobilityInput').value = value;
+        updateMobilityLabelColor(value);
+    }
+    
+    function updatePainLabelColor(value) {
+        var label = document.getElementById('painLabel');
+        label.className = 'badge';
+        
+        if (value <= 3) {
+            label.classList.add('bg-success');
+        } else if (value <= 6) {
+            label.classList.add('bg-warning');
+        } else {
+            label.classList.add('bg-danger');
+        }
+    }
+    
+    function updateMobilityLabelColor(value) {
+        var label = document.getElementById('mobilityLabel');
+        label.className = 'badge';
+        
+        if (value >= 80) {
+            label.classList.add('bg-success');
+        } else if (value >= 40) {
+            label.classList.add('bg-info');
+        } else {
+            label.classList.add('bg-secondary');
+        }
+    }
+</script>
+{% endblock %} 

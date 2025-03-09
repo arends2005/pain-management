@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ injury.name }} - Injury Details{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="mb-0">{{ injury.name }}</h1>
+            <div>
+                <a href="{{ url_for('user.add_progress_log', id=injury.id) }}" class="btn btn-success me-2">
+                    <i class="fas fa-plus me-1"></i>Add Progress Log
+                </a>
+                <a href="{{ url_for('user.injuries') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Injuries
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Injury Details -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-first-aid me-2"></i>Injury Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Type:</strong> {{ injury.injury_type }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Severity:</strong> {{ injury.severity }}
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Body Location:</strong> {{ injury.body_location }}
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Date of Injury:</strong> {{ injury.date_of_injury.strftime('%Y-%m-%d') }}
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Description:</strong>
+                    <p class="mt-2">{{ injury.description or 'No description provided.' }}</p>
+                </div>
+                
+                <div class="d-grid">
+                    <a href="{{ url_for('user.edit_injury', id=injury.id) }}" class="btn btn-warning">
+                        <i class="fas fa-edit me-1"></i>Edit Injury
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recovery Plans -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Recovery Plans</h5>
+            </div>
+            <div class="card-body">
+                {% if recovery_plans %}
+                    <div class="list-group">
+                        {% for plan in recovery_plans %}
+                            <a href="{{ url_for('user.show_recovery_plan', id=plan.id) }}" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1">{{ plan.name }}</h5>
+                                    <span class="badge {% if plan.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {{ 'Active' if plan.is_active else 'Inactive' }}
+                                    </span>
+                                </div>
+                                <small>Start Date: {{ plan.start_date.strftime('%Y-%m-%d') }}</small>
+                                <p class="mb-1">{{ plan.description|truncate(50) }}</p>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>No recovery plans found for this injury.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Logs -->
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Progress Logs</h5>
+                <a href="{{ url_for('user.add_progress_log', id=injury.id) }}" class="btn btn-sm btn-light">
+                    <i class="fas fa-plus me-1"></i>Add New Log
+                </a>
+            </div>
+            <div class="card-body">
+                {% if progress_logs %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Pain Level</th>
+                                    <th>Mobility</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in progress_logs %}
+                                    <tr>
+                                        <td>{{ log.date.strftime('%Y-%m-%d') }}</td>
+                                        <td>
+                                            <div class="progress">
+                                                <div class="progress-bar {% if log.pain_level < 4 %}bg-success{% elif log.pain_level < 7 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                                     role="progressbar" 
+                                                     style="width: {{ log.pain_level * 10 }}%;"
+                                                     aria-valuenow="{{ log.pain_level }}" 
+                                                     aria-valuemin="0" 
+                                                     aria-valuemax="10">
+                                                    {{ log.pain_level }}/10
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if log.mobility is not none %}
+                                                <div class="progress">
+                                                    <div class="progress-bar bg-info" 
+                                                         role="progressbar" 
+                                                         style="width: {{ log.mobility }}%;"
+                                                         aria-valuenow="{{ log.mobility }}" 
+                                                         aria-valuemin="0" 
+                                                         aria-valuemax="100">
+                                                        {{ log.mobility }}%
+                                                    </div>
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">Not recorded</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ log.notes|truncate(50) }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>No progress logs recorded yet.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if progress_logs|length > 1 %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-chart-area me-2"></i>Progress Visualization</h5>
+            </div>
+            <div class="card-body">
+                <div id="painChart" style="height: 300px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if progress_logs|length > 1 %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var data = [
+            {
+                x: [{% for log in progress_logs %}'{{ log.date.strftime('%Y-%m-%d') }}',{% endfor %}],
+                y: [{% for log in progress_logs %}{{ log.pain_level }},{% endfor %}],
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Pain Level',
+                line: {color: 'rgb(220, 53, 69)'}
+            },
+            {% if progress_logs[0].mobility is not none %}
+            {
+                x: [{% for log in progress_logs %}'{{ log.date.strftime('%Y-%m-%d') }}',{% endfor %}],
+                y: [{% for log in progress_logs %}{{ log.mobility if log.mobility is not none else 'null' }},{% endfor %}],
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Mobility %',
+                line: {color: 'rgb(13, 202, 240)'}
+            }
+            {% endif %}
+        ];
+
+        var layout = {
+            title: 'Pain & Mobility Over Time',
+            xaxis: {
+                title: 'Date',
+                type: 'date',
+                tickformat: '%Y-%m-%d'
+            },
+            yaxis: {
+                title: 'Value',
+                range: [0, 100]
+            },
+            legend: {
+                orientation: 'h',
+                y: 1.1
+            }
+        };
+
+        Plotly.newPlot('painChart', data, layout);
+    });
+</script>
+{% endif %}
+{% endblock %} 

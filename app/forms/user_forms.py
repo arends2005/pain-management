@@ -84,7 +84,18 @@ class MedicationForm(FlaskForm):
 class ExerciseForm(FlaskForm):
     name = StringField('Exercise Name', validators=[DataRequired(), Length(1, 100)])
     description = TextAreaField('Description', validators=[Optional(), Length(0, 500)])
-    frequency = StringField('Frequency', validators=[DataRequired(), Length(1, 50)])
+    frequency = SelectField('Frequency', validators=[DataRequired()],
+                          choices=[
+                              ('daily', 'Daily'),
+                              ('twice_daily', 'Twice Daily'),
+                              ('three_times_daily', 'Three Times Daily'),
+                              ('every_other_day', 'Every Other Day'),
+                              ('weekly', 'Weekly'),
+                              ('twice_weekly', 'Twice Weekly'),
+                              ('three_times_weekly', 'Three Times Weekly'),
+                              ('as_needed', 'As Needed'),
+                              ('other', 'Other (See Instructions)')
+                          ])
     duration = StringField('Duration', validators=[Optional(), Length(0, 50)])
     repetitions = StringField('Repetitions', validators=[Optional(), Length(0, 50)])
     instructions = TextAreaField('Instructions', validators=[Optional(), Length(0, 500)])

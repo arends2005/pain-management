@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 
-{% block title %}Edit Medication - Pain Management App{% endblock %}
+{% block title %}Add New Exercise - Pain Management App{% endblock %}
 
 {% block content %}
 <div class="row mb-4">
     <div class="col-md-12">
         <div class="d-flex justify-content-between align-items-center">
-            <h1 class="mb-0">Edit Medication</h1>
-            <a href="{{ url_for('admin.show_recovery_plan', id=plan.id) }}" class="btn btn-outline-primary">
+            <h1 class="mb-0">Add New Exercise</h1>
+            <a href="{{ url_for('user.show_recovery_plan', id=plan.id) }}" class="btn btn-outline-primary">
                 <i class="fas fa-arrow-left me-1"></i>Back to Recovery Plan
             </a>
         </div>
@@ -17,20 +17,20 @@
 <div class="row">
     <div class="col-md-8 offset-md-2">
         <div class="card">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0"><i class="fas fa-pills me-2"></i>Medication Information</h5>
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-dumbbell me-2"></i>Exercise Information</h5>
             </div>
             <div class="card-body">
                 <div class="alert alert-info mb-4">
-                    <strong>Recovery Plan:</strong> {{ plan.name }} for {{ user.username }}
+                    <strong>Recovery Plan:</strong> {{ plan.name }}
                 </div>
                 
-                <form method="POST" action="{{ url_for('admin.edit_medication', id=medication.id) }}">
+                <form method="POST" action="{{ url_for('user.new_exercise', plan_id=plan.id) }}">
                     {{ form.hidden_tag() }}
                     
                     <div class="mb-3">
                         {{ form.name.label(class="form-label") }}
-                        {{ form.name(class="form-control", placeholder="Enter medication name") }}
+                        {{ form.name(class="form-control", placeholder="Enter exercise name") }}
                         {% if form.name.errors %}
                             <div class="text-danger">
                                 {% for error in form.name.errors %}
@@ -41,11 +41,11 @@
                     </div>
                     
                     <div class="mb-3">
-                        {{ form.dosage.label(class="form-label") }}
-                        {{ form.dosage(class="form-control", placeholder="e.g., 500mg, 2 tablets") }}
-                        {% if form.dosage.errors %}
+                        {{ form.frequency.label(class="form-label") }}
+                        {{ form.frequency(class="form-control") }}
+                        {% if form.frequency.errors %}
                             <div class="text-danger">
-                                {% for error in form.dosage.errors %}
+                                {% for error in form.frequency.errors %}
                                     <small>{{ error }}</small>
                                 {% endfor %}
                             </div>
@@ -53,11 +53,23 @@
                     </div>
                     
                     <div class="mb-3">
-                        {{ form.frequency.label(class="form-label") }}
-                        {{ form.frequency(class="form-control", placeholder="e.g., Twice daily, Every 4 hours") }}
-                        {% if form.frequency.errors %}
+                        {{ form.duration.label(class="form-label") }}
+                        {{ form.duration(class="form-control", placeholder="e.g., 15 minutes, 30 seconds") }}
+                        {% if form.duration.errors %}
                             <div class="text-danger">
-                                {% for error in form.frequency.errors %}
+                                {% for error in form.duration.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.repetitions.label(class="form-label") }}
+                        {{ form.repetitions(class="form-control", placeholder="e.g., 3 sets of 10, 20 reps") }}
+                        {% if form.repetitions.errors %}
+                            <div class="text-danger">
+                                {% for error in form.repetitions.errors %}
                                     <small>{{ error }}</small>
                                 {% endfor %}
                             </div>
@@ -90,8 +102,20 @@
                     </div>
                     
                     <div class="mb-3">
+                        {{ form.description.label(class="form-label") }}
+                        {{ form.description(class="form-control", rows=3, placeholder="Describe the exercise") }}
+                        {% if form.description.errors %}
+                            <div class="text-danger">
+                                {% for error in form.description.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
                         {{ form.instructions.label(class="form-label") }}
-                        {{ form.instructions(class="form-control", rows=3, placeholder="Enter any specific instructions for taking this medication") }}
+                        {{ form.instructions(class="form-control", rows=3, placeholder="Enter detailed instructions for performing the exercise") }}
                         {% if form.instructions.errors %}
                             <div class="text-danger">
                                 {% for error in form.instructions.errors %}
@@ -110,7 +134,7 @@
                         {{ form.discord_notifications(class="form-check-input") }}
                         {{ form.discord_notifications.label(class="form-check-label") }}
                         <small class="form-text text-muted d-block">
-                            Enable Discord notifications for this medication. The user will receive reminders via Discord if they have Discord preferences set up.
+                            Enable Discord notifications for this exercise. You will receive reminders via Discord if you have Discord preferences set up.
                         </small>
                     </div>
                     
@@ -118,29 +142,6 @@
                         {{ form.submit(class="btn btn-primary") }}
                     </div>
                 </form>
-                
-                {% if medication.id %}
-                <hr class="my-4">
-                <div class="card bg-light">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="fab fa-discord me-2"></i>Test Discord Notifications</h5>
-                        <p class="card-text">Send a test notification to the user's Discord channel to verify the configuration works correctly.</p>
-                        
-                        <form action="{{ url_for('admin.test_medication_notification', id=medication.id) }}" method="POST" class="d-inline">
-                            {{ form.csrf_token }}
-                            <button type="submit" class="btn btn-info">
-                                <i class="fas fa-paper-plane me-1"></i>Send Test Notification
-                            </button>
-                        </form>
-                        
-                        <div class="mt-2 small text-muted">
-                            <strong>Note:</strong> The user must have Discord preferences configured with a valid channel ID.
-                            <br>
-                            <strong>What happens:</strong> A test medication notification will be queued and sent to the Discord channel within 1 minute.
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>

@@ -27,26 +27,27 @@
                         <thead>
                             <tr>
                                 <th>ID</th>
+                                <th>Time</th>
                                 <th>User</th>
-                                <th>Discord User ID</th>
+                                <th>Discord Channel ID</th>
                                 <th>Type</th>
-                                <th>Sent Message</th>
+                                <th>Message</th>
                                 <th>Response</th>
-                                <th>Timestamp</th>
-                                <th>Response Time</th>
                                 <th>Status</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for log in logs %}
                             <tr>
                                 <td>{{ log.id }}</td>
+                                <td>{{ (log.timestamp|to_pacific)|strftime('%Y-%m-%d %H:%M:%S') }}</td>
                                 <td>
                                     <a href="{{ url_for('admin.show_user', id=log.user_id) }}">
                                         {{ log.user.username }}
                                     </a>
                                 </td>
-                                <td>{{ log.discord_user_id }}</td>
+                                <td>{{ log.discord_channel_id }}</td>
                                 <td>
                                     {% if log.message_type == 'medication' %}
                                         <span class="badge bg-info">Medication</span>
@@ -58,20 +59,17 @@
                                 </td>
                                 <td>{{ log.sent_message|truncate(50) }}</td>
                                 <td>{{ log.response|default('No response yet', true)|truncate(50) }}</td>
-                                <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                                <td>
-                                    {% if log.response_time %}
-                                        {{ log.response_time.strftime('%Y-%m-%d %H:%M:%S') }}
-                                    {% else %}
-                                        <em class="text-muted">Pending</em>
-                                    {% endif %}
-                                </td>
                                 <td>
                                     {% if log.completed %}
                                         <span class="badge bg-success">Completed</span>
                                     {% else %}
                                         <span class="badge bg-warning">Pending</span>
                                     {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('admin.show_log', id=log.id) }}" class="btn btn-primary">
+                                        <i class="fas fa-eye me-1"></i>View
+                                    </a>
                                 </td>
                             </tr>
                             {% endfor %}

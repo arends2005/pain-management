@@ -55,7 +55,7 @@ class Medication(db.Model):
     recovery_plan_id = db.Column(db.Integer, db.ForeignKey('recovery_plans.id'), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     dosage = db.Column(db.String(50), nullable=False)
-    frequency = db.Column(db.String(50), nullable=False)  # e.g., '3 times daily'
+    frequency = db.Column(db.Integer, nullable=False)  # Hours between doses
     instructions = db.Column(db.Text, nullable=True)
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=True)
@@ -76,7 +76,7 @@ class Exercise(db.Model):
     recovery_plan_id = db.Column(db.Integer, db.ForeignKey('recovery_plans.id'), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
-    frequency = db.Column(db.String(50), nullable=False)  # e.g., 'daily', 'twice weekly'
+    frequency = db.Column(db.Integer, nullable=False)  # Hours between exercise sessions
     duration = db.Column(db.String(50), nullable=True)  # e.g., '15 minutes'
     repetitions = db.Column(db.String(50), nullable=True)  # e.g., '3 sets of 10'
     instructions = db.Column(db.Text, nullable=True)
@@ -145,8 +145,8 @@ class DiscordInteractionLog(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    discord_user_id = db.Column(db.String(50), nullable=False)
-    message_type = db.Column(db.String(20), nullable=False)  # 'medication', 'exercise', 'system'
+    discord_channel_id = db.Column(db.String(50), nullable=False)  # Store the channel ID used for the interaction
+    message_type = db.Column(db.String(20), nullable=False)  # 'medication', 'exercise', 'test'
     medication_id = db.Column(db.Integer, db.ForeignKey('medications.id'), nullable=True)
     exercise_id = db.Column(db.Integer, db.ForeignKey('exercises.id'), nullable=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
@@ -154,7 +154,7 @@ class DiscordInteractionLog(db.Model):
     response = db.Column(db.Text, nullable=True)
     response_time = db.Column(db.DateTime, nullable=True)
     completed = db.Column(db.Boolean, default=False)
-    discord_message_id = db.Column(db.String(50), nullable=True)  # Store Discord message ID for deletion
+    discord_message_id = db.Column(db.String(50), nullable=True)  # Store Discord message ID for reference
     
     # Relationships
     user = db.relationship('User', backref='discord_logs')

@@ -57,23 +57,18 @@ class RecoveryPlanForm(FlaskForm):
 class MedicationForm(FlaskForm):
     name = StringField('Medication Name', validators=[DataRequired(), Length(1, 100)])
     dosage = StringField('Dosage', validators=[DataRequired(), Length(1, 50)])
-    frequency = SelectField('Frequency', validators=[DataRequired()],
+    frequency = SelectField('Frequency', validators=[DataRequired()], coerce=int,
                           choices=[
-                              ('every_1_hour', 'Every 1 Hour'),
-                              ('every_2_hours', 'Every 2 Hours'),
-                              ('every_4_hours', 'Every 4 Hours'),
-                              ('every_6_hours', 'Every 6 Hours'),
-                              ('every_8_hours', 'Every 8 Hours'),
-                              ('every_12_hours', 'Every 12 Hours'),
-                              ('once_daily', 'Once Daily'),
-                              ('twice_daily', 'Twice Daily'),
-                              ('three_times_daily', 'Three Times Daily'),
-                              ('four_times_daily', 'Four Times Daily'),
-                              ('as_needed', 'As Needed (PRN)'),
-                              ('weekly', 'Weekly'),
-                              ('biweekly', 'Twice Weekly'),
-                              ('monthly', 'Monthly'),
-                              ('other', 'Other (See Instructions)')
+                              (1, 'Every 1 Hour'),
+                              (2, 'Every 2 Hours'),
+                              (4, 'Every 4 Hours'),
+                              (6, 'Every 6 Hours'),
+                              (8, 'Every 8 Hours'),
+                              (12, 'Every 12 Hours'),
+                              (24, 'Every 24 Hours'),
+                              (168, 'Weekly'), # 24*7
+                              (84, 'Twice Weekly'), # 24*7/2
+                              (672, 'Monthly') # 24*28
                           ])
     instructions = TextAreaField('Instructions', validators=[Optional(), Length(0, 500)])
     start_date = DateField('Start Date', validators=[DataRequired()], default=date.today)
@@ -85,17 +80,20 @@ class MedicationForm(FlaskForm):
 class ExerciseForm(FlaskForm):
     name = StringField('Exercise Name', validators=[DataRequired(), Length(1, 100)])
     description = TextAreaField('Description', validators=[Optional(), Length(0, 500)])
-    frequency = SelectField('Frequency', validators=[DataRequired()],
+    frequency = SelectField('Frequency', validators=[DataRequired()], coerce=int,
                           choices=[
-                              ('daily', 'Daily'),
-                              ('twice_daily', 'Twice Daily'),
-                              ('three_times_daily', 'Three Times Daily'),
-                              ('every_other_day', 'Every Other Day'),
-                              ('weekly', 'Weekly'),
-                              ('twice_weekly', 'Twice Weekly'),
-                              ('three_times_weekly', 'Three Times Weekly'),
-                              ('as_needed', 'As Needed'),
-                              ('other', 'Other (See Instructions)')
+                              (1, 'Every 1 Hour'),
+                              (2, 'Every 2 Hours'),
+                              (4, 'Every 4 Hours'),
+                              (6, 'Every 6 Hours'),
+                              (8, 'Every 8 Hours'),
+                              (12, 'Every 12 Hours'),
+                              (24, 'Every 24 Hours'),
+                              (48, 'Every 2 Days'),
+                              (168, 'Weekly'), # 24*7
+                              (84, 'Twice Weekly'), # 24*7/2
+                              (56, 'Three Times Weekly'), # 24*7/3
+                              (672, 'Monthly') # 24*28
                           ])
     duration = StringField('Duration', validators=[Optional(), Length(0, 50)])
     repetitions = StringField('Repetitions', validators=[Optional(), Length(0, 50)])
@@ -113,18 +111,20 @@ class TextPreferenceForm(FlaskForm):
     ])
     receive_reminders = BooleanField('Receive Text Reminders', default=True)
     reminder_time = TimeField('Daily Reminder Time', validators=[Optional()])
-    reminder_frequency = SelectField('Reminder Frequency', validators=[DataRequired()],
+    reminder_frequency = SelectField('Reminder Frequency', validators=[DataRequired()], coerce=int,
                           choices=[
-                              ('hourly_1', 'Every 1 Hour'),
-                              ('hourly_2', 'Every 2 Hours'),
-                              ('hourly_4', 'Every 4 Hours'),
-                              ('hourly_6', 'Every 6 Hours'),
-                              ('hourly_8', 'Every 8 Hours'),
-                              ('daily', 'Daily'),
-                              ('twice_daily', 'Twice Daily'),
-                              ('every_other_day', 'Every Other Day'),
-                              ('weekly', 'Weekly')
-                          ], default='daily')
+                              (1, 'Every 1 Hour'),
+                              (2, 'Every 2 Hours'),
+                              (4, 'Every 4 Hours'),
+                              (6, 'Every 6 Hours'),
+                              (8, 'Every 8 Hours'),
+                              (12, 'Every 12 Hours'),
+                              (24, 'Every 24 Hours'),
+                              (48, 'Every 2 Days'),
+                              (168, 'Weekly'), # 24*7
+                              (84, 'Twice Weekly'), # 24*7/2
+                              (672, 'Monthly') # 24*28
+                          ], default=24)
     receive_progress_updates = BooleanField('Receive Progress Updates', default=True)
     enabled = BooleanField('Enable Text Reminders', default=True)
     daily_limit = IntegerField('Maximum Daily Texts', validators=[
@@ -155,19 +155,13 @@ class TwilioTestForm(FlaskForm):
     submit = SubmitField('Send Test Message')
 
 class DiscordPreferenceForm(FlaskForm):
-    discord_user_id = StringField('Discord User ID', validators=[
+    discord_channel_id = StringField('Discord Channel ID', validators=[
         Optional(),
-        Regexp(r'^\d{17,19}$', 0, 'Discord User ID must be a valid 17-19 digit number')
+        Regexp(r'^\d{17,19}$', 0, 'Discord Channel ID must be a valid 17-19 digit number')
     ])
     enabled = BooleanField('Enable Discord Reminders', default=True)
     receive_reminders = BooleanField('Receive Discord Reminders', default=True)
     receive_progress_updates = BooleanField('Receive Progress Updates', default=True)
-    message_mode = SelectField('Message Delivery Method', validators=[DataRequired()],
-                          choices=[
-                              ('both', 'Both Direct Messages and Server Channels'),
-                              ('dm', 'Direct Messages Only'),
-                              ('channel', 'Server Channels Only')
-                          ], default='both')
     daily_limit = IntegerField('Maximum Daily Messages', validators=[
         DataRequired(),
         NumberRange(min=1, max=20, message='Please enter a value between 1 and 20')

@@ -33,6 +33,10 @@ class User(db.Model, UserMixin):
     def verify_password(self, password):
         return check_password_hash(self.password_hash, password)
     
+    def check_password(self, password):
+        """Alias for verify_password to maintain compatibility with code expecting this method name"""
+        return self.verify_password(password)
+    
     def __repr__(self):
         return f'<User {self.username}>'
 
@@ -65,7 +69,7 @@ class DiscordPreference(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    discord_user_id = db.Column(db.String(50), nullable=True)
+    discord_channel_id = db.Column(db.String(50), nullable=True)
     enabled = db.Column(db.Boolean, default=True)
     daily_limit = db.Column(db.Integer, default=5)
     quiet_hours_start = db.Column(db.Time, nullable=True)
@@ -73,7 +77,6 @@ class DiscordPreference(db.Model):
     time_zone = db.Column(db.String(50), default='UTC')
     receive_reminders = db.Column(db.Boolean, default=True)
     receive_progress_updates = db.Column(db.Boolean, default=True)
-    message_mode = db.Column(db.String(20), default='both')  # Options: 'dm', 'channel', 'both'
     
     def __repr__(self):
         return f'<DiscordPreference for User {self.user_id}>'

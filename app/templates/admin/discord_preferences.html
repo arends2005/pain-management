@@ -44,30 +44,18 @@
                     {{ form.hidden_tag() }}
                     
                     <div class="mb-3">
-                        {{ form.discord_user_id.label(class="form-label") }}
-                        {{ form.discord_user_id(class="form-control", placeholder="Discord User ID (e.g., 123456789012345678)") }}
-                        {% if form.discord_user_id.errors %}
-                            <div class="text-danger">
-                                {% for error in form.discord_user_id.errors %}
-                                    <small>{{ error }}</small>
+                        {{ form.discord_channel_id.label(class="form-label") }}
+                        {{ form.discord_channel_id(class="form-control", placeholder="Discord Channel ID (e.g., 123456789012345678)") }}
+                        {% if form.discord_channel_id.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.discord_channel_id.errors %}
+                                    {{ error }}
                                 {% endfor %}
                             </div>
                         {% endif %}
                         <small class="form-text text-muted">
-                            Discord User ID is required for the bot to send direct messages. This is a 17-19 digit number.
+                            The Discord channel ID where notifications will be sent.
                         </small>
-                        
-                        <!-- Test Connection Button -->
-                        {% if form.discord_user_id.data %}
-                            <div class="mt-2">
-                                <button type="button" class="btn btn-sm btn-discord" onclick="testConnection()">
-                                    <i class="fas fa-plug me-1"></i>Test Discord Connection
-                                </button>
-                                <small class="form-text text-muted ms-2">
-                                    Click to send a test message to verify the Discord connection.
-                                </small>
-                            </div>
-                        {% endif %}
                     </div>
                     
                     <div class="mb-3 form-check">
@@ -104,22 +92,6 @@
                                 {% endfor %}
                             </div>
                         {% endif %}
-                    </div>
-                    
-                    <div class="mb-3">
-                        {{ form.message_mode.label(class="form-label") }}
-                        {{ form.message_mode(class="form-select") }}
-                        {% if form.message_mode.errors %}
-                            <div class="text-danger">
-                                {% for error in form.message_mode.errors %}
-                                    <small>{{ error }}</small>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                        <small class="form-text text-muted">
-                            Choose how the user will receive messages from the bot. If "Server Channels Only" is selected, 
-                            the bot will only send messages to channels in Discord servers where both the user and the bot are members.
-                        </small>
                     </div>
                     
                     <div class="mb-3">
@@ -171,6 +143,23 @@
                         {% endif %}
                     </div>
                     
+                    <!-- Test Connection Button -->
+                    {% if form.discord_channel_id.data %}
+                        <div class="mb-3">
+                            <button type="button" id="testDiscordBtn" class="btn btn-info">Test Discord Connection</button>
+                            <div id="testDiscordResult" class="mt-2"></div>
+                        </div>
+                    {% else %}
+                        <div class="mb-3">
+                            <button type="button" id="testDiscordBtn" class="btn btn-info" disabled>
+                                <i class="fas fa-plug me-1"></i>Test Discord Connection
+                            </button>
+                            <small class="text-muted">
+                                Enter a Discord Channel ID to enable testing
+                            </small>
+                        </div>
+                    {% endif %}
+                    
                     <div class="d-grid gap-2">
                         {{ form.submit(class="btn btn-primary") }}
                     </div>
@@ -196,14 +185,14 @@
                         <span class="visually-hidden">Loading...</span>
                     </div>
                 </div>
-                <p>A test message has been sent to {{ user.username }}'s Discord account. Please check with the user to confirm receipt.</p>
+                <p>A test message is being sent to {{ user.username }}'s configured Discord server channel. Please check with the user to confirm receipt.</p>
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
                     <strong>What's happening:</strong>
                     <ol class="mb-0 mt-2">
                         <li>A test message has been queued in our system</li>
                         <li>Our Discord bot checks for new messages every minute</li>
-                        <li>The bot will send a direct message to {{ user.username }} on Discord</li>
+                        <li>The bot will send a message to the user's configured server channel</li>
                         <li>The message should be received within 1 minute</li>
                     </ol>
                 </div>
@@ -334,7 +323,7 @@
         if (modalBody) {
             const statusElement = modalBody.querySelector('p');
             if (statusElement) {
-                statusElement.innerHTML = '<strong class="text-success">Test message sent!</strong> Please check with user {{ user.username }} in about a minute if they received the Discord message.';
+                statusElement.innerHTML = '<strong class="text-success">Test message sent!</strong> Please check with {{ user.username }} if they received the message in their Discord server channel.';
             }
         }
     }
@@ -360,6 +349,25 @@
             modals.forEach(function(modalElement) {
                 var modal = new bootstrap.Modal(modalElement);
             });
+        }
+        
+        // Add event listener to test Discord connection button
+        const testDiscordBtn = document.getElementById('testDiscordBtn');
+        if (testDiscordBtn) {
+            testDiscordBtn.addEventListener('click', function() {
+                testConnection();
+            });
+        }
+        
+        // Enable/disable test button based on Discord Channel ID input
+        const discordChannelIdInput = document.querySelector('input[name="discord_channel_id"]');
+        if (discordChannelIdInput && testDiscordBtn) {
+            discordChannelIdInput.addEventListener('input', function() {
+                testDiscordBtn.disabled = !this.value;
+            });
+            
+            // Initial state
+            testDiscordBtn.disabled = !discordChannelIdInput.value;
         }
     });
 </script>

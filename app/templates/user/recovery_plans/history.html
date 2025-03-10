@@ -1,0 +1,591 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ plan.name }} - Activity History{% endblock %}
+
+{% block styles %}
+<style>
+    .activity-card {
+        border-left: 5px solid #ccc;
+        transition: all 0.2s;
+    }
+    .activity-card.medication {
+        border-left-color: #4bc0c0;
+    }
+    .activity-card.exercise {
+        border-left-color: #ff9f40;
+    }
+    .activity-card.completed {
+        background-color: rgba(40, 167, 69, 0.05);
+    }
+    .activity-card.missed {
+        background-color: rgba(220, 53, 69, 0.05);
+    }
+    .timeline-date {
+        position: sticky;
+        top: 60px;
+        z-index: 100;
+        background-color: #f8f9fa;
+        padding: 10px;
+        border-bottom: 1px solid #dee2e6;
+        margin-bottom: 15px;
+    }
+    .badge-discord {
+        background-color: #5865F2;
+        color: white;
+    }
+    .badge-app {
+        background-color: #28a745;
+        color: white;
+    }
+    .badge-missed {
+        background-color: #dc3545;
+        color: white;
+    }
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 5px;
+        font-size: 0.9rem;
+    }
+    .detail-label {
+        font-weight: 500;
+        color: #6c757d;
+    }
+    .timeline-container {
+        position: relative;
+    }
+    .timeline-adherence {
+        position: absolute;
+        right: 15px;
+        top: 10px;
+    }
+    .activity-details {
+        display: none;
+    }
+    .edit-form {
+        display: none;
+        margin-top: 10px;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+    }
+    .tooltip-inner {
+        max-width: 300px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="mb-0">Activity History</h1>
+            <div>
+                <a href="{{ url_for('user.show_recovery_plan', id=plan.id) }}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Recovery Plan
+                </a>
+            </div>
+        </div>
+        <p class="text-muted mt-2">{{ plan.name }}</p>
+        <p class="text-muted"><small><i class="fas fa-clock me-1"></i>All times shown in Pacific Time (PT)</small></p>
+    </div>
+</div>
+
+<!-- Date filter -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Filter History</h5>
+                <form id="filterForm" method="GET" action="{{ url_for('user.recovery_plan_history', id=plan.id) }}" class="row align-items-end">
+                    <div class="col-md-4">
+                        <label for="days" class="form-label">Show activities for past:</label>
+                        <select id="days" name="days" class="form-select" onchange="this.form.submit()">
+                            <option value="3" {% if days == 3 %}selected{% endif %}>3 days</option>
+                            <option value="7" {% if days == 7 %}selected{% endif %}>7 days</option>
+                            <option value="14" {% if days == 14 %}selected{% endif %}>14 days</option>
+                            <option value="30" {% if days == 30 %}selected{% endif %}>30 days</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Activity Timeline -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Activity Timeline</h5>
+            </div>
+            <div class="card-body">
+                {% if history_data %}
+                    {% for day in history_data|reverse %}
+                        <div class="timeline-container mb-4">
+                            <div class="timeline-date">
+                                <h4 class="mb-0">{{ day.date.strftime('%A, %B %d, %Y') }}</h4>
+                                <div class="timeline-adherence">
+                                    <span class="badge {% if day.overall_adherence >= 80 %}bg-success{% elif day.overall_adherence >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
+                                        Overall: {{ day.overall_adherence }}%
+                                    </span>
+                                    <span class="badge {% if day.medication_adherence >= 80 %}bg-success{% elif day.medication_adherence >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
+                                        Medications: {{ day.medication_adherence }}%
+                                    </span>
+                                    <span class="badge {% if day.exercise_adherence >= 80 %}bg-success{% elif day.exercise_adherence >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
+                                        Exercises: {{ day.exercise_adherence }}%
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <!-- Medications -->
+                            {% if day.medication_entries %}
+                                <h5><i class="fas fa-pills text-primary me-2"></i>Medications</h5>
+                                {% for entry in day.medication_entries|sort(attribute='expected_time') %}
+                                    <div class="card activity-card medication mb-3 {% if entry.taken %}completed{% else %}missed{% endif %}" 
+                                         data-bs-toggle="tooltip" title="Click to expand">
+                                        <div class="card-body" onclick="toggleDetails('med-{{ entry.name }}-{{ entry.expected_time.strftime('%Y%m%d%H%M') }}')">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h5 class="card-title">
+                                                        {{ entry.name }}
+                                                        {% if entry.tracking_method == 'app' %}
+                                                            <span class="badge badge-app">App</span>
+                                                        {% elif entry.tracking_method == 'discord' %}
+                                                            <span class="badge badge-discord">Discord</span>
+                                                        {% else %}
+                                                            <span class="badge badge-missed">Not Tracked</span>
+                                                        {% endif %}
+                                                    </h5>
+                                                    <p class="card-text">
+                                                        <strong>Expected:</strong> {{ (entry.expected_time|to_pacific).strftime('%I:%M %p') }}
+                                                        {% if entry.actual_time %}
+                                                            <br><strong>Actual:</strong> {{ (entry.actual_time|to_pacific).strftime('%I:%M %p') }}
+                                                        {% endif %}
+                                                    </p>
+                                                </div>
+                                                <div class="col-md-6 text-end">
+                                                    <h5>
+                                                        {% if entry.taken %}
+                                                            <span class="badge bg-success">Taken</span>
+                                                        {% else %}
+                                                            <span class="badge bg-danger">Missed</span>
+                                                        {% endif %}
+                                                    </h5>
+                                                    <button class="btn btn-sm btn-primary mt-2" 
+                                                            onclick="event.stopPropagation(); toggleEditForm('med-{{ entry.name }}-{{ entry.expected_time.strftime('%Y%m%d%H%M') }}')">
+                                                        <i class="fas fa-edit"></i> Update
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Details Section -->
+                                            <div id="details-med-{{ entry.name }}-{{ entry.expected_time.strftime('%Y%m%d%H%M') }}" class="activity-details mt-3">
+                                                <hr>
+                                                <h6>Details</h6>
+                                                <div class="detail-row">
+                                                    <span class="detail-label">Medication ID:</span>
+                                                    <span>{{ entry.id }}</span>
+                                                </div>
+                                                <div class="detail-row">
+                                                    <span class="detail-label">Expected Time:</span>
+                                                    <span>{{ (entry.expected_time|to_pacific).strftime('%Y-%m-%d %H:%M:%S') }}</span>
+                                                </div>
+                                                {% if entry.actual_time %}
+                                                <div class="detail-row">
+                                                    <span class="detail-label">Actual Time:</span>
+                                                    <span>{{ (entry.actual_time|to_pacific).strftime('%Y-%m-%d %H:%M:%S') }}</span>
+                                                </div>
+                                                {% endif %}
+                                                {% if entry.notes %}
+                                                <div class="detail-row">
+                                                    <span class="detail-label">Notes:</span>
+                                                    <span>{{ entry.notes }}</span>
+                                                </div>
+                                                {% endif %}
+                                                <div class="detail-row">
+                                                    <span class="detail-label">Tracking Method:</span>
+                                                    <span>{{ entry.tracking_method|capitalize if entry.tracking_method else 'Not Tracked' }}</span>
+                                                </div>
+                                                {% if entry.dose_id %}
+                                                <div class="detail-row">
+                                                    <span class="detail-label">Dose ID:</span>
+                                                    <span>{{ entry.dose_id }}</span>
+                                                </div>
+                                                {% endif %}
+                                                {% if entry.log_id %}
+                                                <div class="detail-row">
+                                                    <span class="detail-label">Discord Log ID:</span>
+                                                    <span>{{ entry.log_id }}</span>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            
+                                            <!-- Edit Form -->
+                                            <div id="edit-form-med-{{ entry.name }}-{{ entry.expected_time.strftime('%Y%m%d%H%M') }}" class="edit-form">
+                                                <h6>Update Activity Status</h6>
+                                                {% if entry.dose_id %}
+                                                <form class="update-activity-form" data-activity-type="medication" data-activity-id="{{ entry.dose_id }}">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Status</label>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="radio" name="status" value="true" 
+                                                                   id="status-taken-{{ entry.dose_id }}" 
+                                                                   {% if entry.taken %}checked{% endif %}>
+                                                            <label class="form-check-label" for="status-taken-{{ entry.dose_id }}">
+                                                                Taken
+                                                            </label>
+                                                        </div>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="radio" name="status" value="false" 
+                                                                   id="status-missed-{{ entry.dose_id }}" 
+                                                                   {% if not entry.taken %}checked{% endif %}>
+                                                            <label class="form-check-label" for="status-missed-{{ entry.dose_id }}">
+                                                                Missed
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="notes-{{ entry.dose_id }}" class="form-label">Notes</label>
+                                                        <textarea class="form-control" id="notes-{{ entry.dose_id }}" name="notes" rows="2">{{ entry.notes or '' }}</textarea>
+                                                    </div>
+                                                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                                                    <button type="button" class="btn btn-secondary" 
+                                                            onclick="toggleEditForm('med-{{ entry.name }}-{{ entry.expected_time.strftime('%Y%m%d%H%M') }}')">
+                                                        Cancel
+                                                    </button>
+                                                </form>
+                                                {% else %}
+                                                <form class="update-activity-form" data-activity-type="new_medication" data-medication-id="{{ entry.id }}">
+                                                    <input type="hidden" name="timestamp" value="{{ entry.expected_time.isoformat() }}">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Status</label>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="radio" name="status" value="true" 
+                                                                   id="status-taken-new-{{ entry.id }}-{{ loop.index }}">
+                                                            <label class="form-check-label" for="status-taken-new-{{ entry.id }}-{{ loop.index }}">
+                                                                Taken
+                                                            </label>
+                                                        </div>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="radio" name="status" value="false" 
+                                                                   id="status-missed-new-{{ entry.id }}-{{ loop.index }}" checked>
+                                                            <label class="form-check-label" for="status-missed-new-{{ entry.id }}-{{ loop.index }}">
+                                                                Missed
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="notes-new-{{ entry.id }}-{{ loop.index }}" class="form-label">Notes</label>
+                                                        <textarea class="form-control" id="notes-new-{{ entry.id }}-{{ loop.index }}" name="notes" rows="2"></textarea>
+                                                    </div>
+                                                    <button type="submit" class="btn btn-primary">Record Activity</button>
+                                                    <button type="button" class="btn btn-secondary" 
+                                                            onclick="toggleEditForm('med-{{ entry.name }}-{{ entry.expected_time.strftime('%Y%m%d%H%M') }}')">
+                                                        Cancel
+                                                    </button>
+                                                </form>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                            
+                            <!-- Exercises -->
+                            {% if day.exercise_entries %}
+                                <h5><i class="fas fa-dumbbell text-primary me-2"></i>Exercises</h5>
+                                {% for entry in day.exercise_entries|sort(attribute='expected_time') %}
+                                    <div class="card activity-card exercise mb-3 {% if entry.completed %}completed{% else %}missed{% endif %}" 
+                                         data-bs-toggle="tooltip" title="Click to expand">
+                                        <div class="card-body" onclick="toggleDetails('ex-{{ entry.name }}-{{ entry.expected_time.strftime('%Y%m%d%H%M') }}')">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h5 class="card-title">
+                                                        {{ entry.name }}
+                                                        {% if entry.tracking_method == 'app' %}
+                                                            <span class="badge badge-app">App</span>
+                                                        {% elif entry.tracking_method == 'discord' %}
+                                                            <span class="badge badge-discord">Discord</span>
+                                                        {% else %}
+                                                            <span class="badge badge-missed">Not Tracked</span>
+                                                        {% endif %}
+                                                    </h5>
+                                                    <p class="card-text">
+                                                        <strong>Expected:</strong> {{ (entry.expected_time|to_pacific).strftime('%I:%M %p') }}
+                                                        {% if entry.actual_time %}
+                                                            <br><strong>Actual:</strong> {{ (entry.actual_time|to_pacific).strftime('%I:%M %p') }}
+                                                        {% endif %}
+                                                        {% if entry.difficulty %}
+                                                            <br><strong>Difficulty:</strong> {{ entry.difficulty }}/10
+                                                        {% endif %}
+                                                    </p>
+                                                </div>
+                                                <div class="col-md-6 text-end">
+                                                    <h5>
+                                                        {% if entry.completed %}
+                                                            <span class="badge bg-success">Completed</span>
+                                                        {% else %}
+                                                            <span class="badge bg-danger">Missed</span>
+                                                        {% endif %}
+                                                    </h5>
+                                                    <button class="btn btn-sm btn-primary mt-2" 
+                                                            onclick="event.stopPropagation(); toggleEditForm('ex-{{ entry.name }}-{{ entry.expected_time.strftime('%Y%m%d%H%M') }}')">
+                                                        <i class="fas fa-edit"></i> Update
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Details Section -->
+                                            <div id="details-ex-{{ entry.name }}-{{ entry.expected_time.strftime('%Y%m%d%H%M') }}" class="activity-details mt-3">
+                                                <hr>
+                                                <h6>Details</h6>
+                                                <div class="detail-row">
+                                                    <span class="detail-label">Exercise ID:</span>
+                                                    <span>{{ entry.id }}</span>
+                                                </div>
+                                                <div class="detail-row">
+                                                    <span class="detail-label">Expected Time:</span>
+                                                    <span>{{ (entry.expected_time|to_pacific).strftime('%Y-%m-%d %H:%M:%S') }}</span>
+                                                </div>
+                                                {% if entry.actual_time %}
+                                                <div class="detail-row">
+                                                    <span class="detail-label">Actual Time:</span>
+                                                    <span>{{ (entry.actual_time|to_pacific).strftime('%Y-%m-%d %H:%M:%S') }}</span>
+                                                </div>
+                                                {% endif %}
+                                                {% if entry.notes %}
+                                                <div class="detail-row">
+                                                    <span class="detail-label">Notes:</span>
+                                                    <span>{{ entry.notes }}</span>
+                                                </div>
+                                                {% endif %}
+                                                <div class="detail-row">
+                                                    <span class="detail-label">Tracking Method:</span>
+                                                    <span>{{ entry.tracking_method|capitalize if entry.tracking_method else 'Not Tracked' }}</span>
+                                                </div>
+                                                {% if entry.difficulty %}
+                                                <div class="detail-row">
+                                                    <span class="detail-label">Difficulty Level:</span>
+                                                    <span>{{ entry.difficulty }}/10</span>
+                                                </div>
+                                                {% endif %}
+                                                {% if entry.session_id %}
+                                                <div class="detail-row">
+                                                    <span class="detail-label">Session ID:</span>
+                                                    <span>{{ entry.session_id }}</span>
+                                                </div>
+                                                {% endif %}
+                                                {% if entry.log_id %}
+                                                <div class="detail-row">
+                                                    <span class="detail-label">Discord Log ID:</span>
+                                                    <span>{{ entry.log_id }}</span>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            
+                                            <!-- Edit Form -->
+                                            <div id="edit-form-ex-{{ entry.name }}-{{ entry.expected_time.strftime('%Y%m%d%H%M') }}" class="edit-form">
+                                                <h6>Update Activity Status</h6>
+                                                {% if entry.session_id %}
+                                                <form class="update-activity-form" data-activity-type="exercise" data-activity-id="{{ entry.session_id }}">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Status</label>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="radio" name="status" value="true" 
+                                                                   id="status-completed-{{ entry.session_id }}" 
+                                                                   {% if entry.completed %}checked{% endif %}>
+                                                            <label class="form-check-label" for="status-completed-{{ entry.session_id }}">
+                                                                Completed
+                                                            </label>
+                                                        </div>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="radio" name="status" value="false" 
+                                                                   id="status-missed-{{ entry.session_id }}" 
+                                                                   {% if not entry.completed %}checked{% endif %}>
+                                                            <label class="form-check-label" for="status-missed-{{ entry.session_id }}">
+                                                                Missed
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="difficulty-{{ entry.session_id }}" class="form-label">Difficulty (1-10)</label>
+                                                        <input type="number" class="form-control" id="difficulty-{{ entry.session_id }}" 
+                                                               name="difficulty" min="1" max="10" value="{{ entry.difficulty or '' }}">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="notes-{{ entry.session_id }}" class="form-label">Notes</label>
+                                                        <textarea class="form-control" id="notes-{{ entry.session_id }}" name="notes" rows="2">{{ entry.notes or '' }}</textarea>
+                                                    </div>
+                                                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                                                    <button type="button" class="btn btn-secondary" 
+                                                            onclick="toggleEditForm('ex-{{ entry.name }}-{{ entry.expected_time.strftime('%Y%m%d%H%M') }}')">
+                                                        Cancel
+                                                    </button>
+                                                </form>
+                                                {% else %}
+                                                <form class="update-activity-form" data-activity-type="new_exercise" data-exercise-id="{{ entry.id }}">
+                                                    <input type="hidden" name="timestamp" value="{{ entry.expected_time.isoformat() }}">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Status</label>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="radio" name="status" value="true" 
+                                                                   id="status-completed-new-{{ entry.id }}-{{ loop.index }}">
+                                                            <label class="form-check-label" for="status-completed-new-{{ entry.id }}-{{ loop.index }}">
+                                                                Completed
+                                                            </label>
+                                                        </div>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="radio" name="status" value="false" 
+                                                                   id="status-missed-new-{{ entry.id }}-{{ loop.index }}" checked>
+                                                            <label class="form-check-label" for="status-missed-new-{{ entry.id }}-{{ loop.index }}">
+                                                                Missed
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="difficulty-new-{{ entry.id }}-{{ loop.index }}" class="form-label">Difficulty (1-10)</label>
+                                                        <input type="number" class="form-control" id="difficulty-new-{{ entry.id }}-{{ loop.index }}" 
+                                                               name="difficulty" min="1" max="10">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="notes-new-{{ entry.id }}-{{ loop.index }}" class="form-label">Notes</label>
+                                                        <textarea class="form-control" id="notes-new-{{ entry.id }}-{{ loop.index }}" name="notes" rows="2"></textarea>
+                                                    </div>
+                                                    <button type="submit" class="btn btn-primary">Record Activity</button>
+                                                    <button type="button" class="btn btn-secondary" 
+                                                            onclick="toggleEditForm('ex-{{ entry.name }}-{{ entry.expected_time.strftime('%Y%m%d%H%M') }}')">
+                                                        Cancel
+                                                    </button>
+                                                </form>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                            
+                            {% if not day.medication_entries and not day.exercise_entries %}
+                                <div class="alert alert-info">
+                                    No activities scheduled for this day.
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="alert alert-info">
+                        No activity data available for the selected time period.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+        
+        // Setup form submission handlers
+        document.querySelectorAll('.update-activity-form').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const activityType = this.dataset.activityType;
+                let activityId = this.dataset.activityId;
+                
+                // For new activities, use medication_id or exercise_id
+                let medicationId = this.dataset.medicationId;
+                let exerciseId = this.dataset.exerciseId;
+                
+                // Get form data
+                const formData = new FormData(this);
+                let status = formData.get('status') === 'true';
+                let notes = formData.get('notes');
+                let difficulty = formData.get('difficulty') ? parseInt(formData.get('difficulty')) : null;
+                let timestamp = formData.get('timestamp');
+                
+                // Create request body
+                let requestBody = {
+                    type: activityType,
+                    id: activityId,
+                    status: status,
+                    notes: notes
+                };
+                
+                // Add extra fields for different activity types
+                if (activityType === 'exercise' || activityType === 'new_exercise') {
+                    requestBody.difficulty = difficulty;
+                }
+                
+                if (activityType === 'new_medication') {
+                    requestBody.medication_id = medicationId;
+                    requestBody.timestamp = timestamp;
+                }
+                
+                if (activityType === 'new_exercise') {
+                    requestBody.exercise_id = exerciseId;
+                    requestBody.timestamp = timestamp;
+                }
+                
+                // Send update request
+                fetch('{{ url_for("user.update_activity") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Show success message
+                        alert('Activity updated successfully! Refreshing page...');
+                        // Refresh page to show updated data
+                        window.location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while updating the activity.');
+                });
+            });
+        });
+    });
+    
+    // Function to toggle details section
+    function toggleDetails(id) {
+        const detailsElement = document.getElementById('details-' + id);
+        if (detailsElement.style.display === 'block') {
+            detailsElement.style.display = 'none';
+        } else {
+            detailsElement.style.display = 'block';
+        }
+    }
+    
+    // Function to toggle edit form
+    function toggleEditForm(id) {
+        event.stopPropagation();
+        const formElement = document.getElementById('edit-form-' + id);
+        if (formElement.style.display === 'block') {
+            formElement.style.display = 'none';
+        } else {
+            // Hide all edit forms first
+            document.querySelectorAll('.edit-form').forEach(form => {
+                form.style.display = 'none';
+            });
+            formElement.style.display = 'block';
+        }
+    }
+</script>
+{% endblock %} 

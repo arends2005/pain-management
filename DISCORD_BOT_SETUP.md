@@ -1,104 +1,86 @@
-# Discord Bot Setup for Pain Management App
+# Discord Bot Setup
 
-This guide will help you set up the Discord bot integration for the Pain Management App.
+This document explains how to set up and configure the Discord bot for the Pain Management App.
 
 ## Prerequisites
 
-- A Discord account
-- Access to the Discord Developer Portal
-- The Pain Management App running
+1. You must have a Discord account
+2. You need to create a Discord bot in the Developer Portal
+3. You need to add the bot to your server
 
-## Step 1: Create a Discord Application
+## Creating a Bot
 
-1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
+1. Go to the Discord Developer Portal: https://discord.com/developers/applications
 2. Click "New Application" and give it a name (e.g., "Pain Management Bot")
-3. Click "Create"
+3. Go to the "Bot" tab and click "Add Bot"
+4. Under the "TOKEN" section, click "Copy" to copy your bot token
+5. Add this token to your `.env` file as `DISCORD_BOT_TOKEN`
 
-## Step 2: Set Up the Bot
+## Bot Permissions
 
-1. In your application, go to the "Bot" tab
-2. Click "Add Bot"
-3. Under the "Privileged Gateway Intents" section, enable:
-   - Presence Intent
-   - Server Members Intent
-   - Message Content Intent
-4. Click "Save Changes"
-5. Under the "TOKEN" section, click "Reset Token" and copy the new token
-   - This is your `DISCORD_BOT_TOKEN` for the .env file
+The bot needs the following permissions:
+- Read Messages/View Channels
+- Send Messages
+- Read Message History
 
-## Step 3: Configure Bot Permissions
+These permissions have a bit value of `68608`. You'll need this when creating the invite URL.
 
-1. Go to the "OAuth2" tab
-2. In the "URL Generator" section, select the following scopes:
-   - `bot`
-   - `applications.commands`
-3. Under "Bot Permissions", select:
-   - Read Messages/View Channels
-   - Send Messages
-   - Embed Links
-   - Attach Files
-   - Read Message History
-   - Add Reactions
-4. Copy the generated URL at the bottom of the page
-   - This is your `DISCORD_INVITE_URL` for the .env file
+## Adding the Bot to Your Server
 
-## Step 4: Update Environment Variables
+1. Go to the "OAuth2" tab in the Developer Portal
+2. In the "URL Generator" section, select "bot" under "SCOPES"
+3. Select the permissions mentioned above
+4. Copy the generated URL
+5. Paste it in a browser and select the server you want to add the bot to
 
-Add the following variables to your `.env` file:
+## Server Channel Setup
+
+1. Create a dedicated text channel for the bot (e.g., #pain-management-bot)
+2. Make sure the bot has permission to send messages in this channel
+3. Right-click on the channel and select "Copy ID" (you need Developer Mode enabled in Discord settings)
+4. This channel ID will be needed in the app's Discord preferences
+
+## Testing the Bot Connection
+
+You can test if your bot can connect to a specific channel using the included test script:
 
 ```
-# Discord Configuration
-DISCORD_BOT_TOKEN=your_discord_bot_token_here
-DISCORD_APPLICATION_ID=your_application_id_from_general_information_tab
-DISCORD_PUBLIC_KEY=your_public_key_from_general_information_tab
-DISCORD_BOT_PERMISSIONS=274878221312  # The permissions integer from the URL generator
-DISCORD_INVITE_URL=https://discord.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=YOUR_PERMISSIONS&scope=bot%20applications.commands
+python test_discord_channel.py <channel_id> <bot_token>
 ```
 
-## Step 5: Run the Discord Bot
-
-The Discord bot runs as a separate process from the main application:
-
-```bash
-python discord_bot.py
+For example:
+```
+python test_discord_channel.py 1234567890123456789 your_bot_token_here
 ```
 
-For production, you should set up the bot to run as a service or using a process manager like Supervisor.
+If successful, you'll see a test message appear in the channel briefly.
 
-## Step 6: Configure in Admin Panel
-
-1. Log in to the Pain Management App as an admin
-2. Go to "System Settings"
-3. Enter the Discord Bot Invite URL (the same as `DISCORD_INVITE_URL` in your .env file)
-4. Click "Save Settings"
-
-## Step 7: User Setup
+## User Setup
 
 Users need to:
 
-1. Click the "Add Bot to Discord Server" button in their Discord Preferences
-2. Authorize the bot for their server
-3. Find their Discord User ID:
-   - Enable Developer Mode in Discord (Settings > Advanced > Developer Mode)
-   - Right-click on their username and select "Copy ID"
-4. Enter their Discord User ID in the Discord Preferences page
-5. Configure their notification preferences
+1. Go to their profile in the app
+2. Navigate to "Discord Preferences"
+3. Enter the Channel ID of the Discord channel where they want to receive notifications
+4. Enable Discord notifications and save their preferences
+5. Click the "Test Discord Connection" button to verify everything is working
 
-## Bot Commands
+## Bot Features
 
-The bot currently supports the following interactions:
+The bot provides the following features:
 
-- Responding to medication reminders with "YES" or "NO"
-- Responding to exercise reminders with "YES" or "NO"
+- Medication reminders sent to the server channel
+- Exercise reminders sent to the server channel
+- Response tracking for completed/missed medications and exercises
+- Respects quiet hours and daily message limits set by users
 
 ## Troubleshooting
 
-- **Bot not responding**: Make sure the bot is running and has the correct token
-- **Can't add bot to server**: Verify the invite URL is correct and you have the necessary permissions
-- **Not receiving messages**: Check that your Discord User ID is correct and you have DMs enabled for the server
+If the bot isn't working:
 
-## Security Considerations
-
-- Keep your bot token secure and never commit it to version control
-- The bot only needs the minimum permissions required to function
-- User data is stored securely in the application database 
+1. Verify your bot token is correctly set in the `.env` file
+2. Check that the bot has been added to your server
+3. Ensure the bot has permission to send messages in the channel
+4. Make sure the channel ID is correct (it should be a 17-19 digit number)
+5. Run the test script to verify connectivity
+6. Check the logs using `docker compose logs discord-bot` 

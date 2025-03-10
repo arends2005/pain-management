@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from app.extensions import db
 from app.models.user import User, TextPreference, SystemSettings, DiscordPreference
 from app.models.injury import Injury, ProgressLog
@@ -190,7 +190,8 @@ def show_recovery_plan(id):
                           plan=plan,
                           user=user,
                           medications=medications,
-                          exercises=exercises)
+                          exercises=exercises,
+                          timedelta=timedelta)
 
 @admin.route('/recovery-plans/<int:id>/edit', methods=['GET', 'POST'])
 @admin_required
@@ -270,37 +271,23 @@ def test_discord_connection(user_id):
     user = User.query.get_or_404(user_id)
     discord_pref = DiscordPreference.query.filter_by(user_id=user.id).first()
     
-    if not discord_pref or not discord_pref.discord_user_id:
-        if request.is_json:
-            return jsonify({'success': False, 'message': 'Please save the Discord User ID first.'}), 400
-        flash('Please save the Discord User ID first.', 'warning')
-        return redirect(url_for('admin.user_discord_preferences', user_id=user.id))
+    if not discord_pref or not discord_pref.discord_channel_id:
+        flash('User must set up their Discord preferences with a valid Channel ID first.', 'warning')
+        return redirect(url_for('admin.edit_discord_preferences', user_id=user.id))
     
     try:
-        # Create a test message
-        message = f"""**Discord Connection Test (Admin)**
-
-Hello {user.username}! This is a test message from the Pain Management App admin panel to verify your Discord connection.
-
-The bot will try to send messages to you in two ways:
-1. This direct message (DM) to you
-2. A message in a channel in a server where both you and the bot are members
-
-If you're seeing this, your Discord connection is working correctly!"""
-        
-        # Create a log entry for the Discord bot to pick up
-        test_log = DiscordInteractionLog(
+        # Create a log entry for the test message
+        log = DiscordInteractionLog(
             user_id=user.id,
-            discord_user_id=discord_pref.discord_user_id,
-            message_type='system',
-            sent_message=message,
-            timestamp=datetime.now(),
-            completed=False  # Mark as not completed so it gets picked up
+            discord_channel_id=discord_pref.discord_channel_id,
+            message_type='test',
+            sent_message='This is a test of the bot connection (sent by admin)',
+            timestamp=datetime.now()
         )
-        db.session.add(test_log)
+        db.session.add(log)
         db.session.commit()
         
-        success_message = f'Test message queued! The user should receive Discord messages (DM and server channel) in the next minute.'
+        success_message = f'Test message queued! The user should receive a message in their Discord server channel in the next minute.'
         
         if request.is_json:
             return jsonify({'success': True, 'message': success_message})
@@ -462,6 +449,39 @@ def edit_medication(id):
     
     return render_template('admin/medications/edit.html', form=form, medication=medication, plan=plan, user=user)
 
+@admin.route('/medications/<int:id>/test-notification', methods=['POST'])
+@admin_required
+def test_medication_notification(id):
+    """Test sending a Discord notification for a medication"""
+    medication = Medication.query.get_or_404(id)
+    plan = RecoveryPlan.query.get_or_404(medication.recovery_plan_id)
+    user = User.query.get_or_404(plan.user_id)
+    
+    # Check if the user has Discord preferences set up
+    discord_pref = user.discord_preferences
+    
+    if not discord_pref or not discord_pref.discord_channel_id:
+        flash('The user must set up Discord preferences with a valid Channel ID first.', 'warning')
+        return redirect(url_for('admin.edit_medication', id=medication.id))
+    
+    # Create a medication-specific test message with plan name
+    message = f"**Medication Reminder TEST**\n\n📋 Plan: {plan.name}\n📋 {medication.name}\n💊 Dosage: {medication.dosage}\n⏰ Every {medication.frequency} hours\n\n{medication.instructions if medication.instructions else ''}\n\nThis is a TEST message. No response is required."
+    
+    # Create a log entry for the test message
+    log = DiscordInteractionLog(
+        user_id=user.id,
+        discord_channel_id=discord_pref.discord_channel_id,
+        message_type='test',
+        medication_id=medication.id,
+        sent_message=message,
+        timestamp=datetime.utcnow()
+    )
+    db.session.add(log)
+    db.session.commit()
+    
+    flash('Test medication notification has been queued. It will be sent to the Discord channel within the next minute.', 'success')
+    return redirect(url_for('admin.edit_medication', id=medication.id))
+
 # Exercise Management
 @admin.route('/recovery-plans/<int:plan_id>/exercises/new', methods=['GET', 'POST'])
 @admin_required
@@ -512,6 +532,39 @@ def edit_exercise(id):
         return redirect(url_for('admin.show_recovery_plan', id=plan.id))
     
     return render_template('admin/exercises/edit.html', form=form, exercise=exercise, plan=plan, user=user)
+
+@admin.route('/exercises/<int:id>/test-notification', methods=['POST'])
+@admin_required
+def test_exercise_notification(id):
+    """Test sending a Discord notification for an exercise"""
+    exercise = Exercise.query.get_or_404(id)
+    plan = RecoveryPlan.query.get_or_404(exercise.recovery_plan_id)
+    user = User.query.get_or_404(plan.user_id)
+    
+    # Check if the user has Discord preferences set up
+    discord_pref = user.discord_preferences
+    
+    if not discord_pref or not discord_pref.discord_channel_id:
+        flash('The user must set up Discord preferences with a valid Channel ID first.', 'warning')
+        return redirect(url_for('admin.edit_exercise', id=exercise.id))
+    
+    # Create an exercise-specific test message with plan name
+    message = f"**Exercise Reminder TEST**\n\n📋 Plan: {plan.name}\n🏋️ {exercise.name}\n⏱️ Duration: {exercise.duration if exercise.duration else 'N/A'}\n🔄 Repetitions: {exercise.repetitions if exercise.repetitions else 'N/A'}\n⏰ Every {exercise.frequency} hours\n\n{exercise.instructions if exercise.instructions else ''}\n\nThis is a TEST message. No response is required."
+    
+    # Create a log entry for the test message
+    log = DiscordInteractionLog(
+        user_id=user.id,
+        discord_channel_id=discord_pref.discord_channel_id,
+        message_type='test',
+        exercise_id=exercise.id,
+        sent_message=message,
+        timestamp=datetime.utcnow()
+    )
+    db.session.add(log)
+    db.session.commit()
+    
+    flash('Test exercise notification has been queued. It will be sent to the Discord channel within the next minute.', 'success')
+    return redirect(url_for('admin.edit_exercise', id=exercise.id))
 
 # Delete Routes
 @admin.route('/recovery-plans/<int:id>/delete', methods=['POST'])
@@ -651,4 +704,107 @@ def system_settings():
 def discord_logs():
     """View Discord bot interaction logs"""
     logs = DiscordInteractionLog.query.order_by(DiscordInteractionLog.timestamp.desc()).limit(100).all()
-    return render_template('admin/discord_logs.html', logs=logs) 
+    return render_template('admin/discord_logs.html', logs=logs)
+
+@admin.route('/discord-logs/<int:id>')
+@admin_required
+def show_log(id):
+    """View details of a specific Discord interaction log"""
+    log = DiscordInteractionLog.query.get_or_404(id)
+    return render_template('admin/discord_log_detail.html', log=log)
+
+# Analytics Dashboard
+@admin.route('/analytics')
+@admin_required
+def analytics():
+    """Admin analytics dashboard with system-wide statistics"""
+    # Get counts
+    users_count = User.query.filter_by(is_admin=False).count()
+    injuries_count = Injury.query.count()
+    recovery_plans_count = RecoveryPlan.query.count()
+    active_plans_count = RecoveryPlan.query.filter_by(is_active=True).count()
+    
+    # Get activity over time (last 30 days)
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=30)
+    
+    # Medication logs over time
+    medication_logs = db.session.query(
+        db.func.date(DiscordInteractionLog.timestamp).label('date'),
+        db.func.count().label('count')
+    ).filter(
+        DiscordInteractionLog.message_type == 'medication',
+        DiscordInteractionLog.timestamp >= start_date,
+        DiscordInteractionLog.timestamp <= end_date
+    ).group_by(db.func.date(DiscordInteractionLog.timestamp)).all()
+    
+    # Exercise logs over time
+    exercise_logs = db.session.query(
+        db.func.date(DiscordInteractionLog.timestamp).label('date'),
+        db.func.count().label('count')
+    ).filter(
+        DiscordInteractionLog.message_type == 'exercise',
+        DiscordInteractionLog.timestamp >= start_date,
+        DiscordInteractionLog.timestamp <= end_date
+    ).group_by(db.func.date(DiscordInteractionLog.timestamp)).all()
+    
+    # Format data for charts
+    dates = []
+    med_counts = []
+    ex_counts = []
+    
+    current_date = start_date.date()
+    while current_date <= end_date.date():
+        dates.append(current_date.strftime('%Y-%m-%d'))
+        
+        # Find medication count for this date
+        med_count = next((log.count for log in medication_logs if log.date == current_date), 0)
+        med_counts.append(med_count)
+        
+        # Find exercise count for this date
+        ex_count = next((log.count for log in exercise_logs if log.date == current_date), 0)
+        ex_counts.append(ex_count)
+        
+        current_date += timedelta(days=1)
+    
+    # Calculate overall completion rates
+    completed_meds = DiscordInteractionLog.query.filter(
+        DiscordInteractionLog.message_type == 'medication',
+        DiscordInteractionLog.completed == True
+    ).count()
+    
+    total_meds = DiscordInteractionLog.query.filter(
+        DiscordInteractionLog.message_type == 'medication'
+    ).count()
+    
+    completed_exercises = DiscordInteractionLog.query.filter(
+        DiscordInteractionLog.message_type == 'exercise',
+        DiscordInteractionLog.completed == True
+    ).count()
+    
+    total_exercises = DiscordInteractionLog.query.filter(
+        DiscordInteractionLog.message_type == 'exercise'
+    ).count()
+    
+    med_completion_rate = round((completed_meds / max(total_meds, 1)) * 100)
+    exercise_completion_rate = round((completed_exercises / max(total_exercises, 1)) * 100)
+    overall_completion_rate = round(((completed_meds + completed_exercises) / 
+                                     max(total_meds + total_exercises, 1)) * 100)
+    
+    return render_template(
+        'admin/analytics.html',
+        users_count=users_count,
+        injuries_count=injuries_count,
+        recovery_plans_count=recovery_plans_count,
+        active_plans_count=active_plans_count,
+        dates=dates,
+        med_counts=med_counts,
+        ex_counts=ex_counts,
+        med_completion_rate=med_completion_rate,
+        exercise_completion_rate=exercise_completion_rate,
+        overall_completion_rate=overall_completion_rate,
+        total_meds=total_meds,
+        completed_meds=completed_meds,
+        total_exercises=total_exercises,
+        completed_exercises=completed_exercises
+    ) 

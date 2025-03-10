@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, g, abort
 from flask_login import login_required, current_user
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from app.extensions import db
 from app.models.user import User, TextPreference, DiscordPreference, SystemSettings
 from app.models.injury import Injury, ProgressLog
@@ -156,14 +156,197 @@ def new_recovery_plan():
 @user.route('/recovery-plans/<int:id>')
 @login_required
 def show_recovery_plan(id):
-    plan = RecoveryPlan.query.filter_by(id=id, user_id=current_user.id).first_or_404()
+    plan = RecoveryPlan.query.get_or_404(id)
+    if plan.user_id != current_user.id:
+        flash('You do not have permission to view this recovery plan.', 'danger')
+        return redirect(url_for('user.recovery_plans'))
+    
     medications = Medication.query.filter_by(recovery_plan_id=plan.id).all()
     exercises = Exercise.query.filter_by(recovery_plan_id=plan.id).all()
     
-    return render_template('user/recovery_plans/show.html', 
-                          plan=plan,
-                          medications=medications,
-                          exercises=exercises)
+    return render_template('user/recovery_plans/show.html', plan=plan, 
+                           medications=medications, exercises=exercises,
+                           timedelta=timedelta, user=current_user)
+
+@user.route('/recovery-plans/<int:plan_id>/medications/new', methods=['GET', 'POST'])
+@login_required
+def new_medication(plan_id):
+    plan = RecoveryPlan.query.get_or_404(plan_id)
+    
+    # Ensure the user owns this recovery plan
+    if plan.user_id != current_user.id:
+        flash('You do not have permission to add medications to this plan.', 'danger')
+        return redirect(url_for('user.recovery_plans'))
+    
+    form = MedicationForm()
+    
+    if form.validate_on_submit():
+        medication = Medication(
+            recovery_plan_id=plan.id,
+            name=form.name.data,
+            dosage=form.dosage.data,
+            frequency=form.frequency.data,
+            instructions=form.instructions.data,
+            start_date=form.start_date.data,
+            end_date=form.end_date.data,
+            is_active=form.is_active.data,
+            discord_notifications=form.discord_notifications.data
+        )
+        db.session.add(medication)
+        db.session.commit()
+        flash('Medication added successfully!', 'success')
+        return redirect(url_for('user.show_recovery_plan', id=plan.id))
+    
+    return render_template('user/medications/new.html', form=form, plan=plan)
+
+@user.route('/recovery-plans/<int:plan_id>/exercises/new', methods=['GET', 'POST'])
+@login_required
+def new_exercise(plan_id):
+    plan = RecoveryPlan.query.get_or_404(plan_id)
+    
+    # Ensure the user owns this recovery plan
+    if plan.user_id != current_user.id:
+        flash('You do not have permission to add exercises to this plan.', 'danger')
+        return redirect(url_for('user.recovery_plans'))
+    
+    form = ExerciseForm()
+    
+    if form.validate_on_submit():
+        exercise = Exercise(
+            recovery_plan_id=plan.id,
+            name=form.name.data,
+            description=form.description.data,
+            frequency=form.frequency.data,
+            duration=form.duration.data,
+            repetitions=form.repetitions.data,
+            instructions=form.instructions.data,
+            start_date=form.start_date.data,
+            end_date=form.end_date.data,
+            is_active=form.is_active.data,
+            discord_notifications=form.discord_notifications.data
+        )
+        db.session.add(exercise)
+        db.session.commit()
+        flash('Exercise added successfully!', 'success')
+        return redirect(url_for('user.show_recovery_plan', id=plan.id))
+    
+    return render_template('user/exercises/new.html', form=form, plan=plan)
+
+@user.route('/medications/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_medication(id):
+    medication = Medication.query.get_or_404(id)
+    plan = RecoveryPlan.query.get_or_404(medication.recovery_plan_id)
+    
+    # Ensure the user owns this medication
+    if plan.user_id != current_user.id:
+        flash('You do not have permission to edit this medication.', 'danger')
+        return redirect(url_for('user.recovery_plans'))
+    
+    form = MedicationForm(obj=medication)
+    
+    if form.validate_on_submit():
+        form.populate_obj(medication)
+        db.session.commit()
+        flash('Medication updated successfully!', 'success')
+        return redirect(url_for('user.show_recovery_plan', id=plan.id))
+    
+    return render_template('user/medications/edit.html', form=form, medication=medication, plan=plan)
+
+@user.route('/exercises/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_exercise(id):
+    exercise = Exercise.query.get_or_404(id)
+    plan = RecoveryPlan.query.get_or_404(exercise.recovery_plan_id)
+    
+    # Ensure the user owns this exercise
+    if plan.user_id != current_user.id:
+        flash('You do not have permission to edit this exercise.', 'danger')
+        return redirect(url_for('user.recovery_plans'))
+    
+    form = ExerciseForm(obj=exercise)
+    
+    if form.validate_on_submit():
+        form.populate_obj(exercise)
+        db.session.commit()
+        flash('Exercise updated successfully!', 'success')
+        return redirect(url_for('user.show_recovery_plan', id=plan.id))
+    
+    return render_template('user/exercises/edit.html', form=form, exercise=exercise, plan=plan)
+
+@user.route('/medications/<int:id>/test-notification', methods=['POST'])
+@login_required
+def test_medication_notification(id):
+    """Test sending a Discord notification for a medication"""
+    medication = Medication.query.get_or_404(id)
+    plan = RecoveryPlan.query.get_or_404(medication.recovery_plan_id)
+    
+    # Ensure the user owns this medication
+    if plan.user_id != current_user.id:
+        flash('You do not have permission to test this medication.', 'danger')
+        return redirect(url_for('user.recovery_plans'))
+    
+    # Check if the user has Discord preferences set up
+    discord_pref = current_user.discord_preferences
+    
+    if not discord_pref or not discord_pref.discord_channel_id:
+        flash('You must set up your Discord preferences with a valid Channel ID first.', 'warning')
+        return redirect(url_for('user.discord_preferences'))
+    
+    # Create a medication-specific test message with plan name
+    message = f"**Medication Reminder TEST**\n\n📋 Plan: {plan.name}\n📋 {medication.name}\n💊 Dosage: {medication.dosage}\n⏰ Every {medication.frequency} hours\n\n{medication.instructions if medication.instructions else ''}\n\nThis is a TEST message. No response is required."
+    
+    # Create a log entry for the test message
+    log = DiscordInteractionLog(
+        user_id=current_user.id,
+        discord_channel_id=discord_pref.discord_channel_id,
+        message_type='test',
+        medication_id=medication.id,
+        sent_message=message,
+        timestamp=datetime.utcnow()
+    )
+    db.session.add(log)
+    db.session.commit()
+    
+    flash('Test medication notification has been queued. It will be sent to the Discord channel within the next minute.', 'success')
+    return redirect(url_for('user.edit_medication', id=medication.id))
+
+@user.route('/exercises/<int:id>/test-notification', methods=['POST'])
+@login_required
+def test_exercise_notification(id):
+    """Test sending a Discord notification for an exercise"""
+    exercise = Exercise.query.get_or_404(id)
+    plan = RecoveryPlan.query.get_or_404(exercise.recovery_plan_id)
+    
+    # Ensure the user owns this exercise
+    if plan.user_id != current_user.id:
+        flash('You do not have permission to test this exercise.', 'danger')
+        return redirect(url_for('user.recovery_plans'))
+    
+    # Check if the user has Discord preferences set up
+    discord_pref = current_user.discord_preferences
+    
+    if not discord_pref or not discord_pref.discord_channel_id:
+        flash('You must set up your Discord preferences with a valid Channel ID first.', 'warning')
+        return redirect(url_for('user.discord_preferences'))
+    
+    # Create an exercise-specific test message with plan name
+    message = f"**Exercise Reminder TEST**\n\n📋 Plan: {plan.name}\n🏋️ {exercise.name}\n⏱️ Duration: {exercise.duration if exercise.duration else 'N/A'}\n🔄 Repetitions: {exercise.repetitions if exercise.repetitions else 'N/A'}\n⏰ Every {exercise.frequency} hours\n\n{exercise.instructions if exercise.instructions else ''}\n\nThis is a TEST message. No response is required."
+    
+    # Create a log entry for the test message
+    log = DiscordInteractionLog(
+        user_id=current_user.id,
+        discord_channel_id=discord_pref.discord_channel_id,
+        message_type='test',
+        exercise_id=exercise.id,
+        sent_message=message,
+        timestamp=datetime.utcnow()
+    )
+    db.session.add(log)
+    db.session.commit()
+    
+    flash('Test exercise notification has been queued. It will be sent to the Discord channel within the next minute.', 'success')
+    return redirect(url_for('user.edit_exercise', id=exercise.id))
 
 # Text preferences
 @user.route('/text-preferences', methods=['GET', 'POST'])
@@ -590,101 +773,493 @@ def discord_preferences():
 @login_required
 def test_discord_connection():
     """Test Discord connection for the current user"""
-    discord_pref = DiscordPreference.query.filter_by(user_id=current_user.id).first()
+    # Check if they have Discord settings
+    discord_pref = current_user.discord_preferences
     
-    if not discord_pref or not discord_pref.discord_user_id:
-        if request.is_json:
-            return jsonify({'success': False, 'message': 'Please save your Discord User ID first.'}), 400
-        flash('Please save your Discord User ID first.', 'warning')
+    if not discord_pref or not discord_pref.discord_channel_id:
+        flash('You must set up your Discord preferences with a valid Channel ID first.', 'warning')
         return redirect(url_for('user.discord_preferences'))
+
+    # Create a log entry for the test message
+    log = DiscordInteractionLog(
+        user_id=current_user.id,
+        discord_channel_id=discord_pref.discord_channel_id,
+        message_type='test',
+        sent_message='This is a test of the bot connection',
+        timestamp=datetime.utcnow()
+    )
+    db.session.add(log)
+    db.session.commit()
     
-    try:
-        # Create a test message
-        message = f"""**Discord Connection Test**
-
-Hello {current_user.username}! This is a test message from the Pain Management App to verify your Discord connection.
-
-The bot will try to send messages to you in two ways:
-1. This direct message (DM) to you
-2. A message in a channel in a server where both you and the bot are members
-
-If you're seeing this, your Discord connection is working correctly!"""
-        
-        # Create a log entry for the Discord bot to pick up
-        test_log = DiscordInteractionLog(
-            user_id=current_user.id,
-            discord_user_id=discord_pref.discord_user_id,
-            message_type='system',
-            sent_message=message,
-            timestamp=datetime.now(),
-            completed=False  # Mark as not completed so it gets picked up
-        )
-        db.session.add(test_log)
-        db.session.commit()
-        
-        success_message = 'Test message queued! Please check your Discord DMs and shared server channels in the next minute.'
-        
-        if request.is_json:
-            return jsonify({'success': True, 'message': success_message})
-        
-        flash(success_message, 'success')
-    except Exception as e:
-        error_message = f'Error queuing test message: {str(e)}'
-        if request.is_json:
-            return jsonify({'success': False, 'message': error_message}), 500
-        flash(error_message, 'danger')
-        
+    success_message = 'Test message queued! Please check your Discord server channel in the next minute.'
+    
     if request.is_json:
-        return jsonify({'success': True})
+        return jsonify({'success': True, 'message': success_message})
+    
+    flash(success_message, 'success')
     return redirect(url_for('user.discord_preferences'))
 
-@user.route('/delete-discord-messages', methods=['POST'])
+@user.route('/medications/<int:id>/delete', methods=['POST'])
 @login_required
-def delete_discord_messages():
-    """Delete all bot messages from user's Discord DMs"""
-    discord_pref = DiscordPreference.query.filter_by(user_id=current_user.id).first()
+def delete_medication(id):
+    medication = Medication.query.get_or_404(id)
+    plan = RecoveryPlan.query.get_or_404(medication.recovery_plan_id)
     
-    if not discord_pref or not discord_pref.discord_user_id:
-        if request.is_json:
-            return jsonify({'success': False, 'message': 'No Discord User ID found. Please set up your Discord preferences first.'}), 400
-        flash('No Discord User ID found. Please set up your Discord preferences first.', 'warning')
-        return redirect(url_for('user.discord_preferences'))
+    # Ensure the user owns this medication
+    if plan.user_id != current_user.id:
+        flash('You do not have permission to delete this medication.', 'danger')
+        return redirect(url_for('user.recovery_plans'))
     
-    try:
-        # Create a system message to trigger the bot to delete messages
-        message = f"""**Discord Message Cleanup Request**
+    db.session.delete(medication)
+    db.session.commit()
+    flash('Medication deleted successfully!', 'success')
+    return redirect(url_for('user.show_recovery_plan', id=plan.id))
 
-User {current_user.username} has requested to delete all bot messages from their DMs.
-User ID: {current_user.id}
-Discord User ID: {discord_pref.discord_user_id}
-Timestamp: {datetime.now()}
+@user.route('/exercises/<int:id>/delete', methods=['POST'])
+@login_required
+def delete_exercise(id):
+    exercise = Exercise.query.get_or_404(id)
+    plan = RecoveryPlan.query.get_or_404(exercise.recovery_plan_id)
+    
+    # Ensure the user owns this exercise
+    if plan.user_id != current_user.id:
+        flash('You do not have permission to delete this exercise.', 'danger')
+        return redirect(url_for('user.recovery_plans'))
+    
+    db.session.delete(exercise)
+    db.session.commit()
+    flash('Exercise deleted successfully!', 'success')
+    return redirect(url_for('user.show_recovery_plan', id=plan.id))
 
-This is an automated message for logging purposes."""
+@user.route('/recovery-plans/<int:id>/chart-data')
+@login_required
+def recovery_plan_chart_data(id):
+    plan = RecoveryPlan.query.get_or_404(id)
+    if plan.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    # Get data for the last 7 days
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=7)
+    
+    # Get all medications and exercises
+    medications = Medication.query.filter_by(recovery_plan_id=plan.id, is_active=True).all()
+    exercises = Exercise.query.filter_by(recovery_plan_id=plan.id, is_active=True).all()
+    
+    # Prepare data points for each day
+    data = []
+    current_date = start_date
+    
+    # Check if we have any data
+    has_data = False
+    if medications or exercises:
+        has_data = True
+    
+    while current_date <= end_date:
+        day_start = datetime(current_date.year, current_date.month, current_date.day, 0, 0, 0)
+        day_end = datetime(current_date.year, current_date.month, current_date.day, 23, 59, 59)
         
-        # Create a log entry for the Discord bot to pick up
-        cleanup_log = DiscordInteractionLog(
-            user_id=current_user.id,
-            discord_user_id=discord_pref.discord_user_id,
-            message_type='cleanup',  # Special type for cleanup requests
-            sent_message=message,
-            timestamp=datetime.now(),
-            completed=False  # Mark as not completed so it gets picked up
-        )
-        db.session.add(cleanup_log)
+        if has_data:
+            # Count medication doses that were scheduled for this day
+            med_total = 0
+            med_taken = 0
+            
+            # Get all interaction logs for medications on this day
+            med_logs = DiscordInteractionLog.query.filter(
+                DiscordInteractionLog.user_id == current_user.id,
+                DiscordInteractionLog.message_type == 'medication',
+                DiscordInteractionLog.timestamp >= day_start,
+                DiscordInteractionLog.timestamp <= day_end
+            ).all()
+            
+            # Count all medications that were asked about
+            med_total = len(med_logs)
+            
+            # Count those that were completed
+            med_taken = sum(1 for log in med_logs if log.completed)
+            
+            # If there are no medication logs but we have medications configured,
+            # check if there are any recorded doses for the day
+            if med_total == 0 and medications:
+                for med in medications:
+                    # Estimate doses that should have been taken
+                    daily_doses = 24 // med.frequency if med.frequency > 0 else 0
+                    med_total += daily_doses
+                    
+                    # Count actual doses taken
+                    doses_taken = MedicationDose.query.filter(
+                        MedicationDose.medication_id == med.id,
+                        MedicationDose.timestamp >= day_start,
+                        MedicationDose.timestamp <= day_end,
+                        MedicationDose.taken == True
+                    ).count()
+                    med_taken += doses_taken
+            
+            # Count exercise sessions that were scheduled for this day
+            ex_total = 0
+            ex_completed = 0
+            
+            # Get all interaction logs for exercises on this day
+            ex_logs = DiscordInteractionLog.query.filter(
+                DiscordInteractionLog.user_id == current_user.id,
+                DiscordInteractionLog.message_type == 'exercise',
+                DiscordInteractionLog.timestamp >= day_start,
+                DiscordInteractionLog.timestamp <= day_end
+            ).all()
+            
+            # Count all exercises that were asked about
+            ex_total = len(ex_logs)
+            
+            # Count those that were completed
+            ex_completed = sum(1 for log in ex_logs if log.completed)
+            
+            # If there are no exercise logs but we have exercises configured,
+            # check if there are any recorded sessions for the day
+            if ex_total == 0 and exercises:
+                for ex in exercises:
+                    # Estimate sessions that should have been done
+                    daily_sessions = 24 // ex.frequency if ex.frequency > 0 else 0
+                    ex_total += daily_sessions
+                    
+                    # Count actual sessions completed
+                    sessions_completed = ExerciseSession.query.filter(
+                        ExerciseSession.exercise_id == ex.id,
+                        ExerciseSession.timestamp >= day_start,
+                        ExerciseSession.timestamp <= day_end,
+                        ExerciseSession.completed == True
+                    ).count()
+                    ex_completed += sessions_completed
+            
+            # Calculate adherence percentages - handle the case where nothing was asked or recorded
+            if med_total == 0:
+                med_adherence = 100 if current_date.date() < datetime.now().date() else 0
+            else:
+                med_adherence = round((med_taken / med_total) * 100)
+                
+            if ex_total == 0:
+                ex_adherence = 100 if current_date.date() < datetime.now().date() else 0
+            else:
+                ex_adherence = round((ex_completed / ex_total) * 100)
+                
+            if med_total + ex_total == 0:
+                total_adherence = 100 if current_date.date() < datetime.now().date() else 0
+            else:
+                total_adherence = round(((med_taken + ex_completed) / (med_total + ex_total)) * 100)
+        else:
+            # Generate sample data if no real data exists
+            # This ensures the chart still displays something
+            day_num = (current_date - start_date).days
+            
+            # Create a pattern that shows improvement over time
+            med_total = 4
+            ex_total = 2
+            
+            # Start with lower values and gradually improve
+            base_med_taken = min(med_total, 1 + day_num // 2)
+            base_ex_completed = min(ex_total, 1 + day_num // 3)
+            
+            # Add some randomness
+            import random
+            med_taken = min(med_total, max(0, base_med_taken + random.randint(-1, 1)))
+            ex_completed = min(ex_total, max(0, base_ex_completed + random.randint(-1, 1)))
+            
+            # Calculate adherence percentages
+            med_adherence = round((med_taken / max(1, med_total)) * 100)
+            ex_adherence = round((ex_completed / max(1, ex_total)) * 100)
+            total_adherence = round(((med_taken + ex_completed) / max(1, med_total + ex_total)) * 100)
+        
+        data.append({
+            'date': current_date.strftime('%Y-%m-%d'),
+            'medication_adherence': med_adherence,
+            'exercise_adherence': ex_adherence,
+            'total_adherence': total_adherence,
+            'medication_total': med_total,
+            'medication_taken': med_taken,
+            'exercise_total': ex_total,
+            'exercise_completed': ex_completed
+        })
+        
+        current_date += timedelta(days=1)
+    
+    return jsonify({
+        'plan_name': plan.name,
+        'data': data
+    })
+
+@user.route('/recovery-plans/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_recovery_plan(id):
+    plan = RecoveryPlan.query.get_or_404(id)
+    
+    # Ensure the user owns this recovery plan
+    if plan.user_id != current_user.id:
+        flash('You do not have permission to edit this recovery plan.', 'danger')
+        return redirect(url_for('user.recovery_plans'))
+    
+    form = RecoveryPlanForm(obj=plan)
+    form.injury_id.choices = [(i.id, i.name) for i in Injury.query.filter_by(user_id=current_user.id).all()]
+    
+    if form.validate_on_submit():
+        form.populate_obj(plan)
         db.session.commit()
+        flash('Recovery plan updated successfully!', 'success')
+        return redirect(url_for('user.show_recovery_plan', id=plan.id))
+    
+    return render_template('user/recovery_plans/edit.html', form=form, plan=plan)
+
+@user.route('/recovery-plans/<int:id>/history', methods=['GET'])
+@login_required
+def recovery_plan_history(id):
+    plan = RecoveryPlan.query.get_or_404(id)
+    
+    # Ensure the user owns this recovery plan
+    if plan.user_id != current_user.id:
+        flash('You do not have permission to view this recovery plan history.', 'danger')
+        return redirect(url_for('user.recovery_plans'))
+    
+    # Default to showing the last 7 days, but allow adjusting via query params
+    days = request.args.get('days', 7, type=int)
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=days)
+    
+    # Get all medications and exercises for this plan
+    medications = Medication.query.filter_by(recovery_plan_id=plan.id).all()
+    exercises = Exercise.query.filter_by(recovery_plan_id=plan.id).all()
+    
+    # Prepare data for all days in the range
+    history_data = []
+    
+    current_date = start_date
+    while current_date <= end_date:
+        day_start = datetime(current_date.year, current_date.month, current_date.day, 0, 0, 0)
+        day_end = datetime(current_date.year, current_date.month, current_date.day, 23, 59, 59)
         
-        success_message = 'Message cleanup request queued! The bot will delete all of its messages from your Discord DMs shortly.'
+        # Collect medication data
+        med_entries = []
+        for med in medications:
+            # Check if the medication was active on this date
+            if (med.start_date <= current_date.date() and 
+                (med.end_date is None or med.end_date >= current_date.date()) and
+                med.is_active):
+                
+                # Calculate expected doses for this day based on frequency
+                expected_doses = 24 // med.frequency if med.frequency > 0 else 0
+                
+                # Get actual recorded doses
+                doses = MedicationDose.query.filter(
+                    MedicationDose.medication_id == med.id,
+                    MedicationDose.timestamp >= day_start,
+                    MedicationDose.timestamp <= day_end
+                ).all()
+                
+                # Get Discord logs for this medication
+                discord_logs = DiscordInteractionLog.query.filter(
+                    DiscordInteractionLog.medication_id == med.id,
+                    DiscordInteractionLog.timestamp >= day_start,
+                    DiscordInteractionLog.timestamp <= day_end
+                ).all()
+                
+                # For each expected dose, create an entry
+                for i in range(expected_doses):
+                    # Calculate expected time (roughly)
+                    expected_hour = (i * med.frequency) % 24
+                    expected_time = day_start + timedelta(hours=expected_hour)
+                    
+                    # Check if we have a matching dose record
+                    matching_dose = next((d for d in doses if 
+                                         abs((d.timestamp - expected_time).total_seconds()) < med.frequency * 3600/2), 
+                                        None)
+                    
+                    # Check for a matching Discord log
+                    matching_log = next((l for l in discord_logs if 
+                                        abs((l.timestamp - expected_time).total_seconds()) < med.frequency * 3600/2),
+                                       None)
+                    
+                    entry = {
+                        'type': 'medication',
+                        'id': med.id,
+                        'name': med.name,
+                        'expected_time': expected_time,
+                        'dose_id': matching_dose.id if matching_dose else None,
+                        'log_id': matching_log.id if matching_log else None,
+                        'taken': matching_dose.taken if matching_dose else (matching_log.completed if matching_log else False),
+                        'actual_time': matching_dose.timestamp if matching_dose else (matching_log.timestamp if matching_log else None),
+                        'notes': matching_dose.notes if matching_dose else None,
+                        'tracking_method': 'app' if matching_dose else ('discord' if matching_log else None)
+                    }
+                    med_entries.append(entry)
         
-        if request.is_json:
-            return jsonify({'success': True, 'message': success_message})
+        # Collect exercise data
+        ex_entries = []
+        for ex in exercises:
+            # Check if the exercise was active on this date
+            if (ex.start_date <= current_date.date() and 
+                (ex.end_date is None or ex.end_date >= current_date.date()) and
+                ex.is_active):
+                
+                # Calculate expected sessions for this day based on frequency
+                expected_sessions = 24 // ex.frequency if ex.frequency > 0 else 0
+                
+                # Get actual recorded sessions
+                sessions = ExerciseSession.query.filter(
+                    ExerciseSession.exercise_id == ex.id,
+                    ExerciseSession.timestamp >= day_start,
+                    ExerciseSession.timestamp <= day_end
+                ).all()
+                
+                # Get Discord logs for this exercise
+                discord_logs = DiscordInteractionLog.query.filter(
+                    DiscordInteractionLog.exercise_id == ex.id,
+                    DiscordInteractionLog.timestamp >= day_start,
+                    DiscordInteractionLog.timestamp <= day_end
+                ).all()
+                
+                # For each expected session, create an entry
+                for i in range(expected_sessions):
+                    # Calculate expected time (roughly)
+                    expected_hour = (i * ex.frequency) % 24
+                    expected_time = day_start + timedelta(hours=expected_hour)
+                    
+                    # Check if we have a matching session record
+                    matching_session = next((s for s in sessions if 
+                                            abs((s.timestamp - expected_time).total_seconds()) < ex.frequency * 3600/2), 
+                                           None)
+                    
+                    # Check for a matching Discord log
+                    matching_log = next((l for l in discord_logs if 
+                                        abs((l.timestamp - expected_time).total_seconds()) < ex.frequency * 3600/2),
+                                       None)
+                    
+                    entry = {
+                        'type': 'exercise',
+                        'id': ex.id,
+                        'name': ex.name,
+                        'expected_time': expected_time,
+                        'session_id': matching_session.id if matching_session else None,
+                        'log_id': matching_log.id if matching_log else None,
+                        'completed': matching_session.completed if matching_session else (matching_log.completed if matching_log else False),
+                        'actual_time': matching_session.timestamp if matching_session else (matching_log.timestamp if matching_log else None),
+                        'notes': matching_session.notes if matching_session else None,
+                        'difficulty': matching_session.difficulty if matching_session else None,
+                        'tracking_method': 'app' if matching_session else ('discord' if matching_log else None)
+                    }
+                    ex_entries.append(entry)
         
-        flash(success_message, 'success')
-    except Exception as e:
-        error_message = f'Error requesting message cleanup: {str(e)}'
-        if request.is_json:
-            return jsonify({'success': False, 'message': error_message}), 500
-        flash(error_message, 'danger')
+        # Calculate day's adherence
+        med_total = len(med_entries)
+        med_taken = sum(1 for e in med_entries if e['taken'])
+        ex_total = len(ex_entries)
+        ex_completed = sum(1 for e in ex_entries if e['completed'])
         
-    if request.is_json:
-        return jsonify({'success': True})
-    return redirect(url_for('user.discord_preferences')) 
+        med_adherence = round((med_taken / max(1, med_total)) * 100)
+        ex_adherence = round((ex_completed / max(1, ex_total)) * 100)
+        overall_adherence = round(((med_taken + ex_completed) / max(1, med_total + ex_total)) * 100)
+        
+        # Add day data to history
+        history_data.append({
+            'date': current_date.date(),
+            'medication_entries': med_entries,
+            'exercise_entries': ex_entries,
+            'medication_adherence': med_adherence,
+            'exercise_adherence': ex_adherence,
+            'overall_adherence': overall_adherence
+        })
+        
+        current_date += timedelta(days=1)
+    
+    return render_template('user/recovery_plans/history.html', 
+                          plan=plan, 
+                          history_data=history_data,
+                          days=days)
+
+@user.route('/recovery-plans/update-activity', methods=['POST'])
+@login_required
+def update_activity():
+    data = request.get_json()
+    activity_type = data.get('type')
+    activity_id = data.get('id')
+    new_status = data.get('status')
+    notes = data.get('notes', '')
+    
+    if activity_type == 'medication':
+        dose = MedicationDose.query.get_or_404(activity_id)
+        medication = Medication.query.get_or_404(dose.medication_id)
+        plan = RecoveryPlan.query.get_or_404(medication.recovery_plan_id)
+        
+        # Check if user owns this plan
+        if plan.user_id != current_user.id:
+            return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+        
+        dose.taken = new_status
+        dose.notes = notes
+        dose.response_time = datetime.now()
+    
+    elif activity_type == 'exercise':
+        session = ExerciseSession.query.get_or_404(activity_id)
+        exercise = Exercise.query.get_or_404(session.exercise_id)
+        plan = RecoveryPlan.query.get_or_404(exercise.recovery_plan_id)
+        
+        # Check if user owns this plan
+        if plan.user_id != current_user.id:
+            return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+        
+        session.completed = new_status
+        session.notes = notes
+        session.response_time = datetime.now()
+        session.difficulty = data.get('difficulty')
+    
+    elif activity_type == 'new_medication':
+        medication_id = data.get('medication_id')
+        medication = Medication.query.get_or_404(medication_id)
+        plan = RecoveryPlan.query.get_or_404(medication.recovery_plan_id)
+        
+        # Check if user owns this plan
+        if plan.user_id != current_user.id:
+            return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+        
+        # Create a new dose
+        new_dose = MedicationDose(
+            medication_id=medication_id,
+            timestamp=datetime.fromisoformat(data.get('timestamp')),
+            taken=new_status,
+            notes=notes,
+            response_time=datetime.now()
+        )
+        db.session.add(new_dose)
+        activity_id = new_dose.id  # This will be None until after commit
+    
+    elif activity_type == 'new_exercise':
+        exercise_id = data.get('exercise_id')
+        exercise = Exercise.query.get_or_404(exercise_id)
+        plan = RecoveryPlan.query.get_or_404(exercise.recovery_plan_id)
+        
+        # Check if user owns this plan
+        if plan.user_id != current_user.id:
+            return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+        
+        # Create a new session
+        new_session = ExerciseSession(
+            exercise_id=exercise_id,
+            timestamp=datetime.fromisoformat(data.get('timestamp')),
+            completed=new_status,
+            notes=notes,
+            difficulty=data.get('difficulty'),
+            response_time=datetime.now()
+        )
+        db.session.add(new_session)
+        activity_id = new_session.id  # This will be None until after commit
+    
+    else:
+        return jsonify({'success': False, 'message': 'Invalid activity type'}), 400
+    
+    db.session.commit()
+    
+    # After commit, get the ID for newly created records
+    if activity_type in ('new_medication', 'new_exercise'):
+        activity_id = new_dose.id if activity_type == 'new_medication' else new_session.id
+    
+    return jsonify({
+        'success': True, 
+        'message': 'Activity updated successfully',
+        'activity_id': activity_id
+    }) 

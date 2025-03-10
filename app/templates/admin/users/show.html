@@ -47,13 +47,13 @@
                     </tr>
                     <tr>
                         <th>Created:</th>
-                        <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ (user.created_at|to_pacific)|strftime('%Y-%m-%d') }}</td>
                     </tr>
                     <tr>
                         <th>Last Login:</th>
                         <td>
                             {% if user.last_login %}
-                                {{ user.last_login.strftime('%Y-%m-%d %H:%M') }}
+                                {{ (user.last_login|to_pacific)|strftime('%Y-%m-%d %H:%M') }}
                             {% else %}
                                 Never
                             {% endif %}
@@ -150,7 +150,7 @@
                                     <tr>
                                         <td>{{ plan.name }}</td>
                                         <td>{{ plan.injury.name }}</td>
-                                        <td>{{ plan.start_date.strftime('%Y-%m-%d') }}</td>
+                                        <td>{{ (plan.start_date|to_pacific)|strftime('%Y-%m-%d') }}</td>
                                         <td>
                                             {% if plan.is_active %}
                                                 <span class="badge bg-success">Active</span>

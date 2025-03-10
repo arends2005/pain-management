@@ -44,8 +44,8 @@
                                     <tr>
                                         <td>{{ plan.name }}</td>
                                         <td>{{ plan.injury.name }}</td>
-                                        <td>{{ plan.start_date.strftime('%Y-%m-%d') }}</td>
-                                        <td>{{ plan.end_date.strftime('%Y-%m-%d') if plan.end_date else 'Ongoing' }}</td>
+                                        <td>{{ (plan.start_date|to_pacific)|strftime('%Y-%m-%d') }}</td>
+                                        <td>{{ (plan.end_date|to_pacific)|strftime('%Y-%m-%d') if plan.end_date else 'Ongoing' }}</td>
                                         <td>
                                             <a href="{{ url_for('admin.show_recovery_plan', id=plan.id) }}" class="btn btn-sm btn-primary me-1">
                                                 <i class="fas fa-eye"></i>
@@ -98,8 +98,8 @@
                                     <tr>
                                         <td>{{ plan.name }}</td>
                                         <td>{{ plan.injury.name }}</td>
-                                        <td>{{ plan.start_date.strftime('%Y-%m-%d') }}</td>
-                                        <td>{{ plan.end_date.strftime('%Y-%m-%d') if plan.end_date else 'N/A' }}</td>
+                                        <td>{{ (plan.start_date|to_pacific)|strftime('%Y-%m-%d') }}</td>
+                                        <td>{{ (plan.end_date|to_pacific)|strftime('%Y-%m-%d') if plan.end_date else 'N/A' }}</td>
                                         <td>
                                             <a href="{{ url_for('admin.show_recovery_plan', id=plan.id) }}" class="btn btn-sm btn-primary me-1">
                                                 <i class="fas fa-eye"></i>

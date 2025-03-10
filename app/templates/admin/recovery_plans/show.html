@@ -74,6 +74,8 @@
                                     <th>Dosage</th>
                                     <th>Frequency</th>
                                     <th>Status</th>
+                                    <th>Reminders</th>
+                                    <th>Next Reminder</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -82,11 +84,59 @@
                                 <tr>
                                     <td>{{ medication.name }}</td>
                                     <td>{{ medication.dosage }}</td>
-                                    <td>{{ medication.frequency }}</td>
+                                    <td>
+                                        {% if medication.frequency == 1 %}
+                                            Every 1 Hour
+                                        {% elif medication.frequency == 2 %}
+                                            Every 2 Hours
+                                        {% elif medication.frequency == 4 %}
+                                            Every 4 Hours
+                                        {% elif medication.frequency == 6 %}
+                                            Every 6 Hours
+                                        {% elif medication.frequency == 8 %}
+                                            Every 8 Hours
+                                        {% elif medication.frequency == 12 %}
+                                            Every 12 Hours
+                                        {% elif medication.frequency == 24 %}
+                                            Every 24 Hours
+                                        {% elif medication.frequency == 48 %}
+                                            Every 2 Days
+                                        {% elif medication.frequency == 168 %}
+                                            Weekly
+                                        {% elif medication.frequency == 84 %}
+                                            Twice Weekly
+                                        {% elif medication.frequency == 672 %}
+                                            Monthly
+                                        {% else %}
+                                            {{ medication.frequency }} Hours
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         <span class="badge {% if medication.is_active %}bg-success{% else %}bg-danger{% endif %}">
                                             {{ 'Active' if medication.is_active else 'Inactive' }}
                                         </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if medication.discord_notifications %}bg-primary{% else %}bg-secondary{% endif %}">
+                                            {% if medication.discord_notifications %}
+                                                <i class="fab fa-discord me-1"></i> ACTIVE
+                                            {% else %}
+                                                <i class="fas fa-bell-slash me-1"></i> OFF
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if medication.discord_notifications and medication.is_active %}
+                                            {% set last_dose = medication.doses|sort(attribute='timestamp', reverse=True)|first %}
+                                            {% if last_dose %}
+                                                {% set next_time = last_dose.timestamp + timedelta(hours=medication.frequency) %}
+                                                {{ (next_time|to_pacific)|strftime('%Y-%m-%d %H:%M') }}
+                                            {% else %}
+                                                <span class="text-muted">Due now</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">Not scheduled</span>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         <a href="{{ url_for('admin.edit_medication', id=medication.id) }}" class="btn btn-sm btn-primary me-1">
@@ -133,6 +183,8 @@
                                     <th>Frequency</th>
                                     <th>Duration</th>
                                     <th>Status</th>
+                                    <th>Reminders</th>
+                                    <th>Next Reminder</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -140,12 +192,62 @@
                                 {% for exercise in exercises %}
                                 <tr>
                                     <td>{{ exercise.name }}</td>
-                                    <td>{{ exercise.frequency }}</td>
+                                    <td>
+                                        {% if exercise.frequency == 1 %}
+                                            Every 1 Hour
+                                        {% elif exercise.frequency == 2 %}
+                                            Every 2 Hours
+                                        {% elif exercise.frequency == 4 %}
+                                            Every 4 Hours
+                                        {% elif exercise.frequency == 6 %}
+                                            Every 6 Hours
+                                        {% elif exercise.frequency == 8 %}
+                                            Every 8 Hours
+                                        {% elif exercise.frequency == 12 %}
+                                            Every 12 Hours
+                                        {% elif exercise.frequency == 24 %}
+                                            Every 24 Hours
+                                        {% elif exercise.frequency == 48 %}
+                                            Every 2 Days
+                                        {% elif exercise.frequency == 168 %}
+                                            Weekly
+                                        {% elif exercise.frequency == 84 %}
+                                            Twice Weekly
+                                        {% elif exercise.frequency == 56 %}
+                                            Three Times Weekly
+                                        {% elif exercise.frequency == 672 %}
+                                            Monthly
+                                        {% else %}
+                                            {{ exercise.frequency }} Hours
+                                        {% endif %}
+                                    </td>
                                     <td>{{ exercise.duration }}</td>
                                     <td>
                                         <span class="badge {% if exercise.is_active %}bg-success{% else %}bg-danger{% endif %}">
                                             {{ 'Active' if exercise.is_active else 'Inactive' }}
                                         </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if exercise.discord_notifications %}bg-primary{% else %}bg-secondary{% endif %}">
+                                            {% if exercise.discord_notifications %}
+                                                <i class="fab fa-discord me-1"></i> ACTIVE
+                                            {% else %}
+                                                <i class="fas fa-bell-slash me-1"></i> OFF
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if exercise.discord_notifications and exercise.is_active %}
+                                            {% set latest_session = exercise.sessions|sort(attribute='timestamp', reverse=True)|first %}
+                                            {% if latest_session %}
+                                                {% set next_time = latest_session.timestamp + timedelta(hours=exercise.frequency) %}
+                                                {{ (next_time|to_pacific)|strftime('%Y-%m-%d %H:%M') }}
+                                            {% else %}
+                                                <span class="text-muted">Due now</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">Not scheduled</span>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         <a href="{{ url_for('admin.edit_exercise', id=exercise.id) }}" class="btn btn-sm btn-primary me-1">

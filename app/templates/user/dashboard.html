@@ -76,13 +76,20 @@
                             <div class="list-group-item list-group-item-action">
                                 <div class="d-flex w-100 justify-content-between">
                                     <h6 class="mb-1">{{ dose.medication.name }} ({{ dose.medication.dosage }})</h6>
-                                    <small>{{ dose.timestamp.strftime('%b %d, %H:%M') }}</small>
+                                    <small>{{ (dose.timestamp|to_pacific)|strftime('%b %d, %H:%M') }}</small>
                                 </div>
                                 <p class="mb-1">{{ dose.medication.instructions }}</p>
-                                <small class="text-{% if dose.taken %}success{% else %}danger{% endif %}">
-                                    <i class="fas fa-{% if dose.taken %}check{% else %}times{% endif %}-circle me-1"></i>
-                                    {% if dose.taken %}Taken{% else %}Missed{% endif %}
-                                </small>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-{% if dose.taken %}success{% else %}danger{% endif %}">
+                                        <i class="fas fa-{% if dose.taken %}check{% else %}times{% endif %}-circle me-1"></i>
+                                        {% if dose.taken %}Taken{% else %}Missed{% endif %}
+                                    </small>
+                                    {% if dose.medication.is_active and dose.medication.discord_notifications and current_user.discord_channel_id %}
+                                        <small class="text-info">
+                                            <i class="fas fa-bell me-1"></i>Next: Due in {{ dose.medication.frequency }} hours
+                                        </small>
+                                    {% endif %}
+                                </div>
                             </div>
                         {% endfor %}
                     </div>
@@ -104,13 +111,20 @@
                             <div class="list-group-item list-group-item-action">
                                 <div class="d-flex w-100 justify-content-between">
                                     <h6 class="mb-1">{{ session.exercise.name }}</h6>
-                                    <small>{{ session.timestamp.strftime('%b %d, %H:%M') }}</small>
+                                    <small>{{ (session.timestamp|to_pacific)|strftime('%b %d, %H:%M') }}</small>
                                 </div>
                                 <p class="mb-1">{{ session.exercise.instructions }}</p>
-                                <small class="text-{% if session.completed %}success{% else %}danger{% endif %}">
-                                    <i class="fas fa-{% if session.completed %}check{% else %}times{% endif %}-circle me-1"></i>
-                                    {% if session.completed %}Completed{% else %}Missed{% endif %}
-                                </small>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-{% if session.completed %}success{% else %}danger{% endif %}">
+                                        <i class="fas fa-{% if session.completed %}check{% else %}times{% endif %}-circle me-1"></i>
+                                        {% if session.completed %}Completed{% else %}Missed{% endif %}
+                                    </small>
+                                    {% if session.exercise.is_active and session.exercise.discord_notifications and current_user.discord_channel_id %}
+                                        <small class="text-info">
+                                            <i class="fas fa-bell me-1"></i>Next: Due in {{ session.exercise.frequency }} hours
+                                        </small>
+                                    {% endif %}
+                                </div>
                             </div>
                         {% endfor %}
                     </div>

@@ -142,6 +142,29 @@
                         {{ form.submit(class="btn btn-primary") }}
                     </div>
                 </form>
+                
+                {% if exercise.id %}
+                <hr class="my-4">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fab fa-discord me-2"></i>Test Discord Notifications</h5>
+                        <p class="card-text">Send a test notification to the user's Discord channel to verify the configuration works correctly.</p>
+                        
+                        <form action="{{ url_for('admin.test_exercise_notification', id=exercise.id) }}" method="POST" class="d-inline">
+                            {{ form.csrf_token }}
+                            <button type="submit" class="btn btn-info">
+                                <i class="fas fa-paper-plane me-1"></i>Send Test Notification
+                            </button>
+                        </form>
+                        
+                        <div class="mt-2 small text-muted">
+                            <strong>Note:</strong> The user must have Discord preferences configured with a valid channel ID.
+                            <br>
+                            <strong>What happens:</strong> A test exercise notification will be queued and sent to the Discord channel within 1 minute.
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>

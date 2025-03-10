@@ -34,7 +34,7 @@
                         <i class="fab fa-discord me-2"></i>Add Bot to Discord Server
                     </a>
                     <p class="small text-muted">
-                        After adding the bot, you'll need to provide your Discord User ID below. You can find your Discord User ID by enabling Developer Mode in Discord settings, then right-clicking on your username and selecting "Copy ID".
+                        After adding the bot, you'll need to provide your Discord Channel ID below. You can find your Discord Channel ID by enabling Developer Mode in Discord settings, then right-clicking on the channel name and selecting "Copy ID".
                     </p>
                 </div>
                 {% endif %}
@@ -43,51 +43,41 @@
                     {{ form.hidden_tag() }}
                     
                     <div class="mb-3">
-                        {{ form.discord_user_id.label(class="form-label") }}
-                        {{ form.discord_user_id(class="form-control", placeholder="Your Discord User ID (e.g., 123456789012345678)") }}
-                        {% if form.discord_user_id.errors %}
-                            <div class="text-danger">
-                                {% for error in form.discord_user_id.errors %}
-                                    <small>{{ error }}</small>
+                        {{ form.discord_channel_id.label(class="form-label") }}
+                        {{ form.discord_channel_id(class="form-control", placeholder="Your Discord Channel ID (e.g., 123456789012345678)") }}
+                        {% if form.discord_channel_id.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.discord_channel_id.errors %}
+                                    {{ error }}
                                 {% endfor %}
                             </div>
                         {% endif %}
                         <small class="form-text text-muted">
-                            Your Discord User ID is required for the bot to send you direct messages. This is a 17-19 digit number.
+                            This is the ID of the Discord channel where you want to receive notifications.
+                            <a href="#" data-bs-toggle="modal" data-bs-target="#discordHelpModal">How to find your Channel ID?</a>
                         </small>
-                        
-                        <!-- Test Connection Button -->
-                        {% if form.discord_user_id.data %}
-                            <!-- Debug info -->
-                            <div class="alert alert-info mt-2">
-                                <strong>Debug:</strong> Discord User ID is set to: "{{ form.discord_user_id.data }}"
-                            </div>
-                            
-                            <div class="mt-2">
-                                <button type="button" class="btn btn-sm btn-discord" onclick="testConnection()">
-                                    <i class="fas fa-plug me-1"></i>Test Discord Connection
-                                </button>
-                                <small class="form-text text-muted ms-2">
-                                    Click to send a test message to verify your Discord connection.
-                                </small>
-                            </div>
-                        {% else %}
-                            <!-- Debug info -->
-                            <div class="alert alert-warning mt-2">
-                                <strong>Debug:</strong> Discord User ID is not set or empty. Current value: "{{ form.discord_user_id.data }}"
-                            </div>
-                        {% endif %}
-                        
-                        <!-- Always show the Delete Messages button -->
-                        <div class="mt-2">
-                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteMessages()">
-                                <i class="fas fa-trash me-1"></i>Delete Bot Messages
-                            </button>
-                            <small class="form-text text-muted ms-2">
-                                Click to delete all messages sent by the bot in your Discord DMs.
-                            </small>
-                        </div>
                     </div>
+                    
+                    <!-- Test Connection and Debug Info -->
+                    {% if form.discord_channel_id.data %}
+                        <div class="mb-3">
+                            <button type="button" id="testDiscordBtn" class="btn btn-info">Test Discord Connection</button>
+                            <div id="testResult" class="mt-2"></div>
+                            <div class="small text-muted mt-1">
+                                <strong>Debug:</strong> Discord Channel ID is set to: "{{ form.discord_channel_id.data }}"
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="mb-3">
+                            <button type="button" id="testDiscordBtn" class="btn btn-info" disabled>Test Discord Connection</button>
+                            <div class="small text-muted mt-1">
+                                <em>Enter a Discord Channel ID above to enable testing</em>
+                            </div>
+                            <div class="small text-muted mt-1">
+                                <strong>Debug:</strong> Discord Channel ID is not set or empty. Current value: "{{ form.discord_channel_id.data }}"
+                            </div>
+                        </div>
+                    {% endif %}
                     
                     <div class="mb-3 form-check">
                         {{ form.enabled(class="form-check-input") }}
@@ -123,22 +113,6 @@
                                 {% endfor %}
                             </div>
                         {% endif %}
-                    </div>
-                    
-                    <div class="mb-3">
-                        {{ form.message_mode.label(class="form-label") }}
-                        {{ form.message_mode(class="form-select") }}
-                        {% if form.message_mode.errors %}
-                            <div class="text-danger">
-                                {% for error in form.message_mode.errors %}
-                                    <small>{{ error }}</small>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                        <small class="form-text text-muted">
-                            Choose how you want to receive messages from the bot. If you select "Server Channels Only," 
-                            the bot will only send messages to channels in Discord servers where both you and the bot are members.
-                        </small>
                     </div>
                     
                     <div class="mb-3">
@@ -215,86 +189,15 @@
                         <span class="visually-hidden">Loading...</span>
                     </div>
                 </div>
-                <p>A test message has been sent to your Discord account. Please check your Discord messages.</p>
+                <p>A test message is being sent to your configured Discord server channel. Please check that channel for the message.</p>
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
                     <strong>What's happening:</strong>
                     <ol class="mb-0 mt-2">
                         <li>A test message has been queued in our system</li>
                         <li>Our Discord bot checks for new messages every minute</li>
-                        <li>The bot will send you a direct message on Discord</li>
+                        <li>The bot will send a message to your configured server channel</li>
                         <li>You should receive the message within 1 minute</li>
-                    </ol>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Delete Messages Confirmation Modal -->
-<div class="modal fade" id="deleteMessagesModal" tabindex="-1" aria-labelledby="deleteMessagesModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="deleteMessagesModalLabel">
-                    <i class="fas fa-trash me-2"></i>Delete Discord Messages
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Warning:</strong> This will attempt to delete all messages sent by the bot in your Discord DMs.
-                </div>
-                <p>Are you sure you want to proceed with message deletion?</p>
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <strong>What's happening:</strong>
-                    <ol class="mb-0 mt-2">
-                        <li>A deletion request will be queued in our system</li>
-                        <li>Our Discord bot checks for requests every minute</li>
-                        <li>The bot will attempt to delete all messages it has sent to you</li>
-                        <li>Only messages sent by the bot can be deleted</li>
-                        <li>The process may take several minutes depending on the number of messages</li>
-                    </ol>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" onclick="confirmDeleteMessages()">Delete Messages</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Delete Messages Progress Modal -->
-<div class="modal fade" id="deleteMessagesProgressModal" tabindex="-1" aria-labelledby="deleteMessagesProgressModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="deleteMessagesProgressModalLabel">
-                    <i class="fas fa-trash me-2"></i>Deleting Discord Messages
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="text-center mb-3">
-                    <div class="spinner-border text-danger" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-                <p>Your request to delete Discord messages has been submitted.</p>
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <strong>What's happening:</strong>
-                    <ol class="mb-0 mt-2">
-                        <li>The bot is processing your deletion request</li>
-                        <li>This process may take a few minutes</li>
-                        <li>You'll receive a confirmation message in Discord when completed</li>
-                        <li>For complete privacy, you can also delete the conversation from your Discord client</li>
                     </ol>
                 </div>
             </div>
@@ -329,7 +232,7 @@
         // Check if bootstrap is available
         if (typeof bootstrap === 'undefined') {
             console.error('Bootstrap JavaScript is not loaded');
-            alert('Test message queued! Please check your Discord messages in the next minute.');
+            alert('Test message queued! Please check your Discord channel in the next minute.');
             submitTestConnectionForm(true); // true = use standard form submit
             return;
         }
@@ -339,7 +242,7 @@
             const modalElement = document.getElementById('testConnectionModal');
             if (!modalElement) {
                 console.error('Test connection modal not found');
-                alert('Test message queued! Please check your Discord messages in the next minute.');
+                alert('Test message queued! Please check your Discord channel in the next minute.');
                 submitTestConnectionForm(true); // true = use standard form submit
                 return;
             }
@@ -352,7 +255,7 @@
             submitTestConnectionForm(false); // false = use AJAX
         } catch (error) {
             console.error('Error showing modal:', error);
-            alert('Test message queued! Please check your Discord messages in the next minute.');
+            alert('Test message queued! Please check your Discord channel in the next minute.');
             submitTestConnectionForm(true); // true = use standard form submit
         }
     }
@@ -424,138 +327,7 @@
         if (modalBody) {
             const statusElement = modalBody.querySelector('p');
             if (statusElement) {
-                statusElement.innerHTML = '<strong class="text-success">Test message sent!</strong> Please check your Discord direct messages (DMs) in the next minute. You should receive both a test message and a confirmation message.';
-            }
-        }
-    }
-    
-    function deleteMessages() {
-        // Check if Discord User ID is set
-        const discordUserIdInput = document.querySelector('input[name="discord_user_id"]');
-        if (!discordUserIdInput || !discordUserIdInput.value.trim()) {
-            alert('Please set your Discord User ID first before attempting to delete messages.');
-            return;
-        }
-        
-        // Check if bootstrap is available
-        if (typeof bootstrap === 'undefined') {
-            console.error('Bootstrap JavaScript is not loaded');
-            if (confirm('Are you sure you want to delete all Discord messages sent by the bot?')) {
-                submitDeleteMessagesForm(true); // true = use standard form submit
-            }
-            return;
-        }
-        
-        try {
-            // Get the modal element
-            const modalElement = document.getElementById('deleteMessagesModal');
-            if (!modalElement) {
-                console.error('Delete messages modal not found');
-                if (confirm('Are you sure you want to delete all Discord messages sent by the bot?')) {
-                    submitDeleteMessagesForm(true); // true = use standard form submit
-                }
-                return;
-            }
-            
-            // Show the confirmation modal dialog
-            const deleteModal = new bootstrap.Modal(modalElement);
-            deleteModal.show();
-        } catch (error) {
-            console.error('Error showing modal:', error);
-            if (confirm('Are you sure you want to delete all Discord messages sent by the bot?')) {
-                submitDeleteMessagesForm(true); // true = use standard form submit
-            }
-        }
-    }
-    
-    function confirmDeleteMessages() {
-        // Hide the confirmation modal
-        const confirmModal = bootstrap.Modal.getInstance(document.getElementById('deleteMessagesModal'));
-        if (confirmModal) {
-            confirmModal.hide();
-        }
-        
-        // Show the progress modal
-        try {
-            const progressModal = new bootstrap.Modal(document.getElementById('deleteMessagesProgressModal'));
-            progressModal.show();
-            
-            // Submit form via AJAX to prevent page reload
-            submitDeleteMessagesForm(false); // false = use AJAX
-        } catch (error) {
-            console.error('Error showing progress modal:', error);
-            submitDeleteMessagesForm(true); // true = use standard form submit
-        }
-    }
-    
-    function submitDeleteMessagesForm(useStandardSubmit) {
-        // Get CSRF token from main form
-        const mainForm = document.querySelector('form');
-        const csrfToken = mainForm.querySelector('input[name="csrf_token"]');
-        const csrfValue = csrfToken ? csrfToken.value : '';
-        
-        if (useStandardSubmit) {
-            // Create a form and submit it normally (page reload)
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = "{{ url_for('user.delete_discord_messages') }}";
-            form.style.display = 'none';
-            
-            if (csrfToken) {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'csrf_token';
-                input.value = csrfValue;
-                form.appendChild(input);
-            }
-            
-            document.body.appendChild(form);
-            form.submit();
-        } else {
-            // Use fetch API to submit without page reload
-            fetch("{{ url_for('user.delete_discord_messages') }}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfValue
-                },
-                body: JSON.stringify({
-                    csrf_token: csrfValue
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                
-                // Update the modal content to show "Request sent" status
-                updateModalForDeletionRequested();
-                
-                return response.json();
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                // Even if there's an error with the AJAX call, we want to tell the user it worked
-                // since the form submission will still go through
-                updateModalForDeletionRequested();
-            });
-        }
-    }
-    
-    function updateModalForDeletionRequested() {
-        // Change the spinner to a checkmark in the progress modal
-        const spinnerContainer = document.querySelector('#deleteMessagesProgressModal .spinner-border');
-        if (spinnerContainer) {
-            spinnerContainer.innerHTML = '<i class="fas fa-check-circle text-success" style="font-size: 3rem;"></i>';
-            spinnerContainer.classList.remove('spinner-border');
-        }
-        
-        // Update the text
-        const modalBody = document.querySelector('#deleteMessagesProgressModal .modal-body');
-        if (modalBody) {
-            const statusElement = modalBody.querySelector('p');
-            if (statusElement) {
-                statusElement.innerHTML = '<strong class="text-success">Deletion request sent!</strong> The bot will process your request and delete the messages. You\'ll receive a confirmation message on Discord when completed.';
+                statusElement.innerHTML = '<strong class="text-success">Test message sent!</strong> Please check your configured Discord server channel for the test message.';
             }
         }
     }
@@ -567,6 +339,26 @@
             var modals = document.querySelectorAll('.modal');
             modals.forEach(function(modalElement) {
                 var modal = new bootstrap.Modal(modalElement);
+            });
+        }
+        
+        const discordChannelIdInput = document.querySelector('input[name="discord_channel_id"]');
+        const testDiscordBtn = document.getElementById('testDiscordBtn');
+        
+        // Update test button state based on Discord ID input
+        if (discordChannelIdInput) {
+            discordChannelIdInput.addEventListener('input', function() {
+                testDiscordBtn.disabled = !this.value;
+            });
+            
+            // Initial state
+            testDiscordBtn.disabled = !discordChannelIdInput.value;
+        }
+        
+        // Add click event listener to test Discord connection button
+        if (testDiscordBtn) {
+            testDiscordBtn.addEventListener('click', function() {
+                testConnection();
             });
         }
     });

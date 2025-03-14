@@ -332,13 +332,32 @@ async def check_medications(user, plan, pref, models):
             try:
                 target_channel = await bot.fetch_channel(int(pref.discord_channel_id))
                 
-                # Prepare the message
-                message = f"**Medication Reminder**\n\n📋 Plan: {plan.name}\n📋 {med.name}\n💊 Dosage: {med.dosage}\n⏰ Every {med.frequency} hours\n\n{med.instructions if med.instructions else ''}\n\nPlease reply with **YES** if you've taken this medication, or **NO** if you haven't."
+                # Calculate scheduled time based on frequency and last dose
+                now = datetime.utcnow()
+                scheduled_time = now
+                
+                # Try to find the most recent dose or reminder to calculate the scheduled time
+                last_reminder = db_session.query(models['DiscordInteractionLog']).filter(
+                    models['DiscordInteractionLog'].user_id == user.id,
+                    models['DiscordInteractionLog'].medication_id == med.id,
+                    models['DiscordInteractionLog'].message_type == 'medication'
+                ).order_by(models['DiscordInteractionLog'].timestamp.desc()).first()
+                
+                if last_reminder:
+                    # Calculate based on the last reminder plus the frequency
+                    scheduled_time = last_reminder.timestamp + timedelta(hours=med.frequency)
+                
+                # Convert to user's timezone
+                user_scheduled_time = convert_timezone(scheduled_time, pref.time_zone)
+                formatted_time = user_scheduled_time.strftime('%I:%M %p on %b %d, %Y')
+                
+                # Prepare the message with scheduled time
+                message = f"**Medication Reminder**\n\n📋 Plan: {plan.name}\n📋 {med.name}\n💊 Dosage: {med.dosage}\n⏰ Every {med.frequency} hours\n\n{med.instructions if med.instructions else ''}\n\n⏰ Your scheduled time to take medication is {formatted_time}\n\nPlease reply with **YES** if you've taken this medication, or **NO** if you haven't."
                 
                 # Send the message
                 sent_message = await target_channel.send(message)
                 
-                # Log the interaction
+                # Log the interaction with scheduled time
                 log = models['DiscordInteractionLog'](
                     user_id=user.id,
                     discord_channel_id=pref.discord_channel_id,
@@ -346,7 +365,8 @@ async def check_medications(user, plan, pref, models):
                     medication_id=med.id,
                     sent_message=message,
                     timestamp=datetime.utcnow(),
-                    discord_message_id=str(sent_message.id)
+                    discord_message_id=str(sent_message.id),
+                    scheduled_time=scheduled_time  # Store scheduled time for reference
                 )
                 db_session.add(log)
                 db_session.commit()
@@ -387,6 +407,25 @@ async def check_exercises(user, plan, pref, models):
             try:
                 target_channel = await bot.fetch_channel(int(pref.discord_channel_id))
                 
+                # Calculate scheduled time based on frequency and last session
+                now = datetime.utcnow()
+                scheduled_time = now
+                
+                # Try to find the most recent session or reminder to calculate the scheduled time
+                last_reminder = db_session.query(models['DiscordInteractionLog']).filter(
+                    models['DiscordInteractionLog'].user_id == user.id,
+                    models['DiscordInteractionLog'].exercise_id == ex.id,
+                    models['DiscordInteractionLog'].message_type == 'exercise'
+                ).order_by(models['DiscordInteractionLog'].timestamp.desc()).first()
+                
+                if last_reminder:
+                    # Calculate based on the last reminder plus the frequency
+                    scheduled_time = last_reminder.timestamp + timedelta(hours=ex.frequency)
+                
+                # Convert to user's timezone
+                user_scheduled_time = convert_timezone(scheduled_time, pref.time_zone)
+                formatted_time = user_scheduled_time.strftime('%I:%M %p on %b %d, %Y')
+                
                 # Prepare the message
                 details = []
                 if ex.duration:
@@ -396,7 +435,7 @@ async def check_exercises(user, plan, pref, models):
                 
                 details_str = "\n".join(details) if details else ""
                 
-                message = f"**Exercise Reminder**\n\n📋 Plan: {plan.name}\n🏋️ {ex.name}\n{details_str}\n⏰ Every {ex.frequency} hours\n\n{ex.description if ex.description else ''}\n\n{ex.instructions if ex.instructions else ''}\n\nPlease reply with **YES** if you've completed this exercise, or **NO** if you haven't."
+                message = f"**Exercise Reminder**\n\n📋 Plan: {plan.name}\n🏋️ {ex.name}\n{details_str}\n⏰ Every {ex.frequency} hours\n\n{ex.description if ex.description else ''}\n\n{ex.instructions if ex.instructions else ''}\n\n⏰ Your scheduled time to do this exercise is {formatted_time}\n\nPlease reply with **YES** if you've completed this exercise, or **NO** if you haven't."
                 
                 # Send the message
                 sent_message = await target_channel.send(message)
@@ -409,7 +448,8 @@ async def check_exercises(user, plan, pref, models):
                     exercise_id=ex.id,
                     sent_message=message,
                     timestamp=datetime.utcnow(),
-                    discord_message_id=str(sent_message.id)
+                    discord_message_id=str(sent_message.id),
+                    scheduled_time=scheduled_time  # Store scheduled time for reference
                 )
                 db_session.add(log)
                 db_session.commit()
@@ -563,7 +603,18 @@ async def on_message(message):
                 )
                 db_session.add(dose)
                 db_session.commit()
-                await message.channel.send(f"Great! I've recorded that you've taken your {reminder_type}. Keep up the good work! 👍")
+                
+                # Get scheduled time
+                scheduled_time = getattr(recent_log, 'scheduled_time', recent_log.timestamp)
+                
+                # Format times for display
+                user_scheduled_time = convert_timezone(scheduled_time, pref.time_zone)
+                user_response_time = convert_timezone(response_time, pref.time_zone)
+                
+                formatted_scheduled = user_scheduled_time.strftime('%I:%M %p on %b %d, %Y')
+                formatted_response = user_response_time.strftime('%I:%M %p on %b %d, %Y')
+                
+                await message.channel.send(f"Great! You were scheduled to take your {reminder_type} at {formatted_scheduled} and I recorded you took it at {formatted_response}. Keep up the good work! 👍")
             
             elif recent_log.message_type == 'exercise' and recent_log.exercise_id:
                 session = ExerciseSession(
@@ -574,7 +625,18 @@ async def on_message(message):
                 )
                 db_session.add(session)
                 db_session.commit()
-                await message.channel.send(f"Awesome! I've recorded that you've completed your {reminder_type}. Keep up the good work! 💪")
+                
+                # Get scheduled time
+                scheduled_time = getattr(recent_log, 'scheduled_time', recent_log.timestamp)
+                
+                # Format times for display
+                user_scheduled_time = convert_timezone(scheduled_time, pref.time_zone)
+                user_response_time = convert_timezone(response_time, pref.time_zone)
+                
+                formatted_scheduled = user_scheduled_time.strftime('%I:%M %p on %b %d, %Y')
+                formatted_response = user_response_time.strftime('%I:%M %p on %b %d, %Y')
+                
+                await message.channel.send(f"Awesome! You were scheduled to do your {reminder_type} at {formatted_scheduled} and I recorded you completed it at {formatted_response}. Keep up the good work! 💪")
             
             else:
                 await message.channel.send(f"Thanks for letting me know you've completed your {reminder_type}!")
@@ -592,6 +654,18 @@ async def on_message(message):
                 )
                 db_session.add(dose)
                 db_session.commit()
+                
+                # Get scheduled time
+                scheduled_time = getattr(recent_log, 'scheduled_time', recent_log.timestamp)
+                
+                # Format times for display
+                user_scheduled_time = convert_timezone(scheduled_time, pref.time_zone)
+                user_response_time = convert_timezone(response_time, pref.time_zone)
+                
+                formatted_scheduled = user_scheduled_time.strftime('%I:%M %p on %b %d, %Y')
+                formatted_response = user_response_time.strftime('%I:%M %p on %b %d, %Y')
+                
+                await message.channel.send(f"I understand you haven't taken your {reminder_type}. You were scheduled to take it at {formatted_scheduled} and I recorded you missed it at {formatted_response}. Remember, your recovery plan is important for your health! 🙂")
             
             elif recent_log.message_type == 'exercise' and recent_log.exercise_id:
                 session = ExerciseSession(
@@ -602,8 +676,21 @@ async def on_message(message):
                 )
                 db_session.add(session)
                 db_session.commit()
+                
+                # Get scheduled time
+                scheduled_time = getattr(recent_log, 'scheduled_time', recent_log.timestamp)
+                
+                # Format times for display
+                user_scheduled_time = convert_timezone(scheduled_time, pref.time_zone)
+                user_response_time = convert_timezone(response_time, pref.time_zone)
+                
+                formatted_scheduled = user_scheduled_time.strftime('%I:%M %p on %b %d, %Y')
+                formatted_response = user_response_time.strftime('%I:%M %p on %b %d, %Y')
+                
+                await message.channel.send(f"I understand you haven't completed your {reminder_type}. You were scheduled to do it at {formatted_scheduled} and I recorded you missed it at {formatted_response}. Remember, your recovery plan is important for your health! 🙂")
             
-            await message.channel.send(f"I understand you haven't completed your {reminder_type}. I've recorded this. Remember, your recovery plan is important for your health! 🙂")
+            else:
+                await message.channel.send(f"I understand you haven't completed your {reminder_type}. I've recorded this. Remember, your recovery plan is important for your health! 🙂")
         
         else:
             await message.channel.send(f"I'm not sure what you mean. For your {reminder_type}, please reply with 'YES' if you've completed it, or 'NO' if you haven't.")

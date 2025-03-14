@@ -150,6 +150,7 @@ class DiscordInteractionLog(db.Model):
     medication_id = db.Column(db.Integer, db.ForeignKey('medications.id'), nullable=True)
     exercise_id = db.Column(db.Integer, db.ForeignKey('exercises.id'), nullable=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    scheduled_time = db.Column(db.DateTime, nullable=True)  # Scheduled time for medication/exercise
     sent_message = db.Column(db.Text, nullable=False)
     response = db.Column(db.Text, nullable=True)
     response_time = db.Column(db.DateTime, nullable=True)

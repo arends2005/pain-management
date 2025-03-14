@@ -16,33 +16,7 @@ echo "🔄 Waiting for database to initialize..."
 sleep 10
 
 echo "🔧 Applying database schema changes..."
-docker compose exec web python -c '
-import sys
-import os
-sys.path.insert(0, "/app")
-from flask import Flask
-from config import Config
-app = Flask(__name__, template_folder="app/templates", static_folder="app/static")
-app.config.from_object(Config)
-from app.extensions import db
-
-# Import all models to ensure they are registered with SQLAlchemy
-from app.models.user import User, TextPreference, DiscordPreference, SystemSettings
-from app.models.injury import Injury, ProgressLog
-from app.models.recovery_plan import RecoveryPlan, Medication, Exercise, DiscordInteractionLog, MedicationDose, ExerciseSession
-
-db.init_app(app)
-with app.app_context():
-    db.create_all()
-    print("Database schema updated successfully!")
-
-    # List all tables to verify
-    from sqlalchemy import inspect
-    inspector = inspect(db.engine)
-    print("Tables in database:")
-    for table_name in inspector.get_table_names():
-        print(f"- {table_name}")
-'
+docker compose exec web python db_init_with_upgrades.py
 
 echo "✅ Rebuild complete!"
 echo ""
